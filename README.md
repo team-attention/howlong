@@ -28,6 +28,8 @@ Local file
   service worker is used.
 - Filenames, paths, session IDs, message IDs, and project names do not cross the
   Worker/UI boundary.
+- OpenCode export message `parts`, titles, paths, metadata, and error text are
+  ignored even when the export itself was not sanitized.
 - OpenCode SQLite queries use `json_extract()` for approved metadata fields and
   never select raw message content.
 - Errors are static and aggregated; source lines and database rows are never
@@ -41,14 +43,23 @@ See [Privacy and threat model](docs/privacy.md).
 | --- | --- | --- | --- |
 | Codex | Session `.jsonl` | `task_started` / `turn_started` to matching terminal event | `task_complete` / `turn_complete` without a recorded error |
 | Claude Code | Project or subagent `.jsonl` | Human user message through the turn terminal record | `system/turn_duration`, or terminal assistant stop fallback |
-| OpenCode | `opencode.db`, `.sqlite`, or `.db` | User message plus its assistant/model-step sequence | Completed assistant time plus an allowlisted clean finish and no error |
+| OpenCode | Official export `.json`, `opencode.db`, `.sqlite`, or `.db` | User message plus its assistant/model-step sequence | Completed assistant time plus an allowlisted clean finish and no error |
 
-Detection uses SQLite magic bytes or known JSONL record structures, not the
+Detection uses SQLite magic bytes or known JSON/JSONL structures, not the
 filename extension.
 
 Detailed semantics and limits are in the [support matrix](docs/support.md).
 
 ### OpenCode WAL note
+
+The preferred portable input is OpenCode's official sanitized export:
+
+```bash
+opencode export <sessionID> --sanitize > opencode-export.json
+```
+
+Turnspan still applies its own metadata allowlist and never trusts sanitization
+as the privacy boundary.
 
 Current OpenCode uses SQLite WAL mode. A lone `opencode.db` can omit newer
 committed records that still live in `opencode.db-wal`. Turnspan can read a
@@ -62,7 +73,9 @@ sqlite3 "/path/to/opencode.db" ".backup '/tmp/opencode-snapshot.db'"
 ```
 
 Select `/tmp/opencode-snapshot.db` in Turnspan. Never commit a real session
-database to this repository.
+database to this repository. Common transcript/database patterns and the
+`private-sessions/` directory are ignored by Git; only reviewed synthetic
+fixtures are explicitly allowed.
 
 ## Development
 
@@ -101,6 +114,8 @@ schema-only inspection of current local installations:
   errors, interruptions, pending background work, and sidechain-only records.
 - A checkpointed OpenCode WAL-header database containing both legacy `message`
   and current `session_message` schemas.
+- An official-shape OpenCode export JSON with private data in session, message,
+  part, path, and error fields.
 - A transitional OpenCode database without `session_message.seq`, including
   partial mixed migration data and a token-limit finish.
 
@@ -118,7 +133,8 @@ The Playwright suite runs the production build in Chromium at:
 
 It verifies:
 
-- local file input for Codex, Claude Code, and OpenCode together;
+- local file input for Codex, Claude Code, OpenCode export JSON, and OpenCode
+  SQLite together;
 - zero network requests from analysis start to result;
 - zero WebSockets and blocked service workers;
 - no browser persistence;

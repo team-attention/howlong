@@ -11,6 +11,7 @@ import {
   asRecord,
   durationBetween,
   hasTokenUsage,
+  maxTokenUsage,
   readTokenUsage,
   safeModel,
   toIsoTimestamp,
@@ -30,6 +31,7 @@ interface ClaudeRunBuilder {
   model?: string;
   lastAssistantAt?: string;
   lastStopReason?: string;
+  assistantMessageIds: Set<string>;
   usageByMessage: Map<string, TokenUsage>;
   warningCodes: WarningCode[];
 }
@@ -45,21 +47,37 @@ const CLAUDE_TOKEN_MAPPING = {
 function isHumanUserRecord(record: Record<string, unknown>): boolean {
   const message = asRecord(record.message);
   const content = message?.content;
-  const firstBlock =
-    Array.isArray(content) && content.length > 0
-      ? asRecord(content[0])
-      : undefined;
+  const containsToolResult =
+    Array.isArray(content) &&
+    content.some((block) => asRecord(block)?.type === "tool_result");
   return (
     record.type === "user" &&
     !("toolUseResult" in record) &&
     !("sourceToolAssistantUUID" in record) &&
-    firstBlock?.type !== "tool_result" &&
+    !containsToolResult &&
     record.isMeta !== true
   );
 }
 
 function isTerminalStop(reason: string | undefined): boolean {
   return reason === "end_turn" || reason === "stop_sequence";
+}
+
+function mergeClaudeUsage(
+  current: TokenUsage,
+  next: TokenUsage,
+): TokenUsage {
+  const merged = maxTokenUsage(current, next);
+  const exclusive = [
+    merged.input,
+    merged.output,
+    merged.cacheRead,
+    merged.cacheWrite,
+  ].filter((value): value is number => value !== undefined);
+  if (exclusive.length > 0) {
+    merged.total = exclusive.reduce((sum, value) => sum + value, 0);
+  }
+  return merged;
 }
 
 function finalize(builder: ClaudeRunBuilder) {
@@ -140,12 +158,16 @@ export function parseClaudeJsonl(text: string): ParsedSource {
       record.type === "user" &&
       typeof record.interruptedMessageId === "string"
     ) {
-      if (active) {
+      if (
+        active?.assistantMessageIds.has(record.interruptedMessageId)
+      ) {
         active.status = "interrupted";
         active.completionEvidence = "explicit-abort";
         active.endedAt = toIsoTimestamp(record.timestamp);
         runs.push(finalize(active));
         active = undefined;
+      } else {
+        ignoredRecords += 1;
       }
       continue;
     }
@@ -161,6 +183,7 @@ export function parseClaudeJsonl(text: string): ParsedSource {
         startedAt,
         status: "incomplete",
         completionEvidence: "missing-terminal-event",
+        assistantMessageIds: new Set(),
         usageByMessage: new Map(),
         warningCodes: [],
       };
@@ -190,6 +213,9 @@ export function parseClaudeJsonl(text: string): ParsedSource {
       if (typeof message.stop_reason === "string") {
         active.lastStopReason = message.stop_reason;
       }
+      if (typeof message.id === "string") {
+        active.assistantMessageIds.add(message.id);
+      }
 
       const usage = readTokenUsage(
         message.usage,
@@ -199,17 +225,16 @@ export function parseClaudeJsonl(text: string): ParsedSource {
       if (hasTokenUsage(usage)) {
         const key =
           typeof message.id === "string"
-            ? `${message.id}\0${
-                typeof record.requestId === "string"
-                  ? record.requestId
-                  : "no-request"
-              }`
+            ? message.id
             : typeof record.requestId === "string"
               ? record.requestId
               : typeof record.uuid === "string"
                 ? record.uuid
                 : `usage-${active.usageByMessage.size + 1}`;
-        active.usageByMessage.set(key, usage);
+        active.usageByMessage.set(
+          key,
+          mergeClaudeUsage(active.usageByMessage.get(key) ?? {}, usage),
+        );
       }
 
       const hasAssistantError =

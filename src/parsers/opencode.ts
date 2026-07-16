@@ -9,6 +9,7 @@ import type {
 } from "../core/types";
 import {
   addTokenUsage,
+  asRecord,
   asSafeCount,
   durationBetween,
   hasTokenUsage,
@@ -569,4 +570,162 @@ export async function parseOpenCodeSqlite(
   } finally {
     db.close();
   }
+}
+
+function tokenUsageFromExportInfo(
+  info: Record<string, unknown>,
+): TokenUsage {
+  const tokens = asRecord(info.tokens);
+  const cache = asRecord(tokens?.cache);
+  const usage: TokenUsage = {
+    input: asSafeCount(tokens?.input),
+    output: asSafeCount(tokens?.output),
+    reasoning: asSafeCount(tokens?.reasoning),
+    cacheRead: asSafeCount(cache?.read),
+    cacheWrite: asSafeCount(cache?.write),
+    total: asSafeCount(tokens?.total),
+  };
+
+  if (usage.total === undefined) {
+    const parts = [
+      usage.input,
+      usage.output,
+      usage.reasoning,
+      usage.cacheRead,
+      usage.cacheWrite,
+    ].filter((part): part is number => part !== undefined);
+    if (parts.length > 0) {
+      usage.total = parts.reduce((sum, part) => sum + part, 0);
+    }
+  }
+
+  return usage;
+}
+
+function modelFromExportInfo(
+  info: Record<string, unknown>,
+): string | undefined {
+  const providerId = safeModel(info.providerID);
+  const modelId = safeModel(info.modelID);
+
+  if (providerId && modelId) {
+    return safeModel(`${providerId}/${modelId}`);
+  }
+  return modelId ?? providerId;
+}
+
+/**
+ * Parses the documented `opencode export [sessionID]` JSON shape. Raw message
+ * parts and session fields are intentionally never copied into the result.
+ */
+export function parseOpenCodeExportJson(
+  text: string,
+): ParsedSource | undefined {
+  let root: Record<string, unknown> | undefined;
+  try {
+    root = asRecord(JSON.parse(text));
+  } catch {
+    return undefined;
+  }
+
+  const sessionInfo = asRecord(root?.info);
+  const messages = root?.messages;
+  if (
+    !sessionInfo ||
+    typeof sessionInfo.id !== "string" ||
+    !Array.isArray(messages)
+  ) {
+    return undefined;
+  }
+
+  const groupsByUserId = new Map<string, OpenCodeGroup>();
+  let currentGroup: OpenCodeGroup | undefined;
+  let malformedRecords = 0;
+  let ignoredRecords = 0;
+
+  for (const [index, entry] of messages.entries()) {
+    const wrapped = asRecord(entry);
+    const info = asRecord(wrapped?.info);
+    if (!info) {
+      malformedRecords += 1;
+      continue;
+    }
+
+    const time = asRecord(info.time);
+    const createdAt = toIsoTimestamp(time?.created);
+    if (!createdAt) {
+      malformedRecords += 1;
+      continue;
+    }
+
+    if (info.role === "user") {
+      const userId =
+        typeof info.id === "string" ? info.id : `export-user-${index + 1}`;
+      currentGroup = {
+        groupId: userId,
+        sessionId: "export-session",
+        startedAt: createdAt,
+        assistants: [],
+      };
+      groupsByUserId.set(userId, currentGroup);
+      continue;
+    }
+
+    if (info.role !== "assistant") {
+      ignoredRecords += 1;
+      continue;
+    }
+
+    const parentId =
+      typeof info.parentID === "string" ? info.parentID : undefined;
+    const group = parentId
+      ? groupsByUserId.get(parentId)
+      : currentGroup;
+    if (!group) {
+      ignoredRecords += 1;
+      continue;
+    }
+
+    const error = asRecord(info.error);
+    group.assistants.push({
+      rowId:
+        typeof info.id === "string"
+          ? info.id
+          : `export-assistant-${index + 1}`,
+      sessionId: "export-session",
+      groupId: group.groupId,
+      createdAt,
+      completedAt: toIsoTimestamp(time?.completed),
+      model: modelFromExportInfo(info),
+      finish: typeof info.finish === "string" ? info.finish : undefined,
+      errorName:
+        typeof error?.name === "string"
+          ? error.name
+          : typeof error?.type === "string"
+            ? error.type
+            : undefined,
+      tokens: tokenUsageFromExportInfo(info),
+    });
+  }
+
+  const groups = [...groupsByUserId.values()].filter(
+    (group) => group.assistants.length > 0,
+  );
+  const runs = normalizeGroups(groups);
+  const warningCodes: WarningCode[] = [];
+  if (malformedRecords > 0) {
+    warningCodes.push("MALFORMED_RECORDS_SKIPPED");
+  }
+  if (runs.length === 0) {
+    warningCodes.push("NO_VALID_RUNS");
+  }
+
+  return {
+    provider: "opencode",
+    runs,
+    malformedRecords,
+    oversizedRecords: 0,
+    ignoredRecords,
+    warningCodes,
+  };
 }

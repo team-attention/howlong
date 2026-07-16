@@ -34,14 +34,22 @@ content never becomes a product output at all.
 
 The main thread never receives raw session records.
 
-For OpenCode, SQLite `json_extract()` reads approved fields inside the database
-engine. `message.data`, `session_message.data`, and `part.data` are not returned
-to JavaScript.
+For OpenCode export JSON, message `parts` and non-allowlisted session/message
+fields are never copied into normalized objects. For SQLite, `json_extract()`
+reads approved fields inside the database engine. `message.data`,
+`session_message.data`, and `part.data` are not returned to JavaScript.
+
+The file input is cleared as soon as its `File` objects are handed to the
+Worker. After each result, the Worker is terminated; choosing “Clear” creates
+a fresh prewarmed Worker for the next analysis. This reduces the lifetime of
+raw strings and SQLite memory without making a post-analysis network request.
 
 ## Network and persistence
 
 The application ships all code, Worker JavaScript, and SQLite WASM locally.
 The Worker and WASM are prewarmed before file selection.
+After prewarming, Worker fetch, WebSocket, EventSource, XMLHttpRequest, and
+dynamic script loading APIs are replaced with fail-closed stubs.
 
 Playwright switches the browser offline after the ready signal and verifies that
 analysis and export still complete with zero requests. It also checks:
@@ -72,6 +80,11 @@ form-action 'none'
 
 No third-party origin is permitted or referenced.
 
+The Vite development and preview servers also emit CSP with
+`frame-ancestors 'none'`, `X-Content-Type-Options: nosniff`, COOP, CORP, and a
+no-referrer policy. Equivalent response headers should be configured on any
+static production host; the document-level CSP remains a fallback.
+
 ## Untrusted input handling
 
 - Format detection uses magic bytes and structural fields.
@@ -79,8 +92,10 @@ No third-party origin is permitted or referenced.
 - Individual JSONL records over 8 MiB are skipped before provider detection
   calls `JSON.parse`; detection is bounded to 80 inspected records, and lines
   are iterated without splitting the entire file into an array.
-- Model labels are length-limited and restricted to a conservative character
-  set.
+- Model labels are length-limited, whitespace-free, and restricted to a
+  conservative ASCII identifier character set.
+- File, combined byte, per-source run, and combined run limits bound what can
+  cross from the Worker to the UI.
 - React text nodes are used for rendering; no `innerHTML` exists.
 - The app does not evaluate source code or dynamically import source-provided
   paths.

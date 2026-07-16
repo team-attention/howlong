@@ -9,13 +9,16 @@ import type {
 import { parseJsonlText } from "../parsers/jsonl";
 import {
   isSqliteBytes,
+  parseOpenCodeExportJson,
   parseOpenCodeSqlite,
   prepareOpenCodeParser,
 } from "../parsers/opencode";
 
 const MAX_FILES = 100;
-const MAX_FILE_BYTES = 512 * 1024 * 1024;
-const MAX_TOTAL_BYTES = 1024 * 1024 * 1024;
+const MAX_FILE_BYTES = 256 * 1024 * 1024;
+const MAX_TOTAL_BYTES = 512 * 1024 * 1024;
+const MAX_RUNS_PER_SOURCE = 10_000;
+const MAX_TOTAL_RUNS = 50_000;
 
 const worker = self as DedicatedWorkerGlobalScope;
 let cancelled = false;
@@ -32,7 +35,55 @@ async function parseFile(file: File): Promise<ParsedSource | undefined> {
   }
 
   const text = await file.text();
-  return parseJsonlText(text);
+  return parseJsonlText(text) ?? parseOpenCodeExportJson(text);
+}
+
+function boundRuns(
+  source: ParsedSource,
+  remainingRuns: number,
+): ParsedSource {
+  const allowed = Math.min(MAX_RUNS_PER_SOURCE, Math.max(remainingRuns, 0));
+  if (source.runs.length <= allowed) {
+    return source;
+  }
+
+  return {
+    ...source,
+    runs: source.runs.slice(0, allowed),
+    ignoredRecords: source.ignoredRecords + source.runs.length - allowed,
+    warningCodes: source.warningCodes.includes("RUN_LIMIT_REACHED")
+      ? source.warningCodes
+      : [...source.warningCodes, "RUN_LIMIT_REACHED"],
+  };
+}
+
+function lockWorkerNetwork() {
+  const blockedConstructor = function NetworkAccessDisabled() {
+    throw new TypeError("Network access is disabled after parser setup");
+  };
+  const definitions: Record<string, unknown> = {
+    fetch: () =>
+      Promise.reject(
+        new TypeError("Network access is disabled after parser setup"),
+      ),
+    WebSocket: blockedConstructor,
+    EventSource: blockedConstructor,
+    XMLHttpRequest: blockedConstructor,
+    importScripts: blockedConstructor,
+  };
+
+  for (const [name, value] of Object.entries(definitions)) {
+    try {
+      Object.defineProperty(worker, name, {
+        configurable: false,
+        enumerable: false,
+        value,
+        writable: false,
+      });
+    } catch {
+      // A missing or non-configurable API is already unavailable to the Worker.
+    }
+  }
 }
 
 async function analyze(files: File[]) {
@@ -55,13 +106,21 @@ async function analyze(files: File[]) {
 
   cancelled = false;
   const sources: Array<ParsedSource | undefined> = [];
+  let acceptedRuns = 0;
   for (const [index, file] of files.entries()) {
     if (cancelled) {
       return;
     }
 
     try {
-      sources.push(await parseFile(file));
+      const parsed = await parseFile(file);
+      if (parsed) {
+        const bounded = boundRuns(parsed, MAX_TOTAL_RUNS - acceptedRuns);
+        acceptedRuns += bounded.runs.length;
+        sources.push(bounded);
+      } else {
+        sources.push(undefined);
+      }
     } catch {
       sources.push(undefined);
     }
@@ -84,5 +143,8 @@ worker.addEventListener("message", (event: MessageEvent<WorkerRequest>) => {
 });
 
 void prepareOpenCodeParser()
-  .then(() => send({ type: "ready" }))
+  .then(() => {
+    lockWorkerNetwork();
+    send({ type: "ready" });
+  })
   .catch(() => send({ type: "error", code: "ANALYSIS_FAILED" }));

@@ -15,7 +15,10 @@ Current package checked: `@openai/codex` `0.144.5`.
 
 Primary sources:
 
+- [Codex state and session locations](https://developers.openai.com/codex/config-advanced#config-and-state-locations)
+- [Codex transcript stability warning](https://developers.openai.com/codex/hooks)
 - [Codex protocol events at the 0.144.5 commit](https://github.com/openai/codex/blob/87db9bc18ba5bc82c1cb4e4381b44f693ee35623/codex-rs/protocol/src/protocol.rs#L1320-L1336)
+- [Codex `RolloutItem` and `RolloutLine` protocol definitions](https://github.com/openai/codex/blob/cbc83d961e8132bfff4d340ab8342d181b79e95e/codex-rs/protocol/src/protocol.rs#L3040-L3184)
 - [Codex repository](https://github.com/openai/codex)
 
 Validated behavior:
@@ -40,8 +43,10 @@ Current package checked: `@anthropic-ai/claude-code` `2.1.211`.
 
 Primary sources:
 
-- [Claude Code directory documentation](https://code.claude.com/docs/en/claude-directory)
+- [Claude Code transcript locations and format warning](https://code.claude.com/docs/en/sessions#where-transcripts-are-stored)
+- [Claude Code plaintext storage warning](https://code.claude.com/docs/en/claude-directory#plaintext-storage)
 - [Claude Code hooks documentation](https://code.claude.com/docs/en/hooks)
+- [Claude Agent SDK message types](https://code.claude.com/docs/en/agent-sdk/typescript#message-types)
 
 Claude Code's full session writer source is not public. The format was therefore
 verified using official documentation, the current signed distribution binary,
@@ -50,12 +55,13 @@ prompt, response, or tool-output value was copied into this repository.
 
 Validated behavior:
 
-- A human turn begins at a `user` record whose first content block is not
-  `tool_result`.
+- A human turn begins at a `user` record that is not metadata and contains no
+  `tool_result` block.
 - Tool-result user records remain inside the active turn even when older
   top-level helper fields are absent.
-- Repeated assistant updates are deduplicated by
-  `(message.id, requestId)`.
+- Repeated assistant updates are deduplicated by `message.id`; token fields are
+  merged component-wise by maximum so a later partial update cannot erase
+  earlier counters.
 - `system` / `turn_duration` is the strongest completion evidence.
 - `interruptedMessageId` and `isApiErrorMessage` prevent promotion.
 - Sidechain-only subagent transcripts are valid sources and must not be
@@ -64,6 +70,8 @@ Validated behavior:
   subagent files that omit `turn_duration`.
 - A known non-clean stop such as `max_tokens` remains incomplete even when a
   `turn_duration` record exists.
+- An interruption marker is applied only when its `interruptedMessageId`
+  matches an assistant message observed in the active turn.
 
 ### OpenCode
 
@@ -71,6 +79,9 @@ Current package checked: `opencode-ai` `1.18.2`.
 
 Primary sources:
 
+- [OpenCode `export --sanitize` and JSON import contract](https://opencode.ai/docs/cli/#export)
+- [OpenCode database path command](https://opencode.ai/docs/cli/#db)
+- [OpenCode export implementation at 1.18.2](https://github.com/anomalyco/opencode/blob/70b56a0a93d366889cae950379cc9d2537148fa2/packages/opencode/src/cli/cmd/export.ts#L222-L291)
 - [OpenCode SQLite initialization and WAL mode](https://github.com/anomalyco/opencode/blob/70b56a0a93d366889cae950379cc9d2537148fa2/packages/core/src/database/database.ts#L22-L54)
 - [OpenCode session tables](https://github.com/anomalyco/opencode/blob/70b56a0a93d366889cae950379cc9d2537148fa2/packages/core/src/session/sql.ts#L22-L138)
 - [Transitional pre-`seq` session table](https://github.com/anomalyco/opencode/blob/6bcb9cb9bbeedd97cacc3998177eaab4b8010eaa/packages/opencode/src/session/session.sql.ts#L113-L130)
@@ -81,6 +92,8 @@ Primary sources:
 
 Validated behavior:
 
+- Read the documented `{ info, messages: [{ info, parts }] }` export shape
+  while ignoring `parts`, titles, paths, metadata, and error text.
 - Read legacy `message`, current sequenced `session_message`, and transitional
   pre-sequence `session_message` tables.
 - Group legacy assistant steps by `(session_id, parentID)`.
@@ -96,6 +109,10 @@ Validated behavior:
   ineligible.
 - Query only allowlisted JSON paths with SQLite `json_extract()`. The `part`
   table and raw `session_message.data` content are never selected.
+
+The JSON export is OpenCode's documented portable contract. Direct SQLite
+support is pinned best-effort compatibility with OpenCode 1.18.2 internal
+tables; those tables may change independently of the export command.
 
 OpenCode sets SQLite file header bytes 18 and 19 to WAL mode (`2/2`).
 `sqlite3_deserialize()` cannot directly query that file image. Turnspan clones
@@ -139,6 +156,9 @@ Implementation consequences:
 
 - Native multiple file input is the compatibility baseline.
 - Raw records stay inside a prewarmed Worker.
+- After SQLite WASM initialization, the Worker replaces fetch, WebSocket,
+  EventSource, XMLHttpRequest, and dynamic script loading with fail-closed
+  stubs before accepting files.
 - No remote font, image, script, analytics, or storage dependency exists.
 - Models are accepted only from known provider paths and constrained to a
   bounded safe label.

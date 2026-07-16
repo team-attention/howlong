@@ -1,0 +1,159 @@
+{
+  "info": {
+    "id": "ses_sanitized_export",
+    "title": "TURNSPAN_PRIVATE_CANARY_7f3b session title",
+    "directory": "/private/TURNSPAN_PRIVATE_CANARY_7f3b",
+    "version": "1.18.2",
+    "time": {
+      "created": 1775260800000,
+      "updated": 1775261000000
+    },
+    "metadata": {
+      "private": "TURNSPAN_PRIVATE_CANARY_7f3b"
+    }
+  },
+  "messages": [
+    {
+      "info": {
+        "id": "msg_export_user_1",
+        "sessionID": "ses_sanitized_export",
+        "role": "user",
+        "time": {
+          "created": 1775260800000
+        }
+      },
+      "parts": [
+        {
+          "id": "part_export_prompt",
+          "type": "text",
+          "text": "TURNSPAN_PRIVATE_CANARY_7f3b prompt"
+        }
+      ]
+    },
+    {
+      "info": {
+        "id": "msg_export_assistant_1",
+        "sessionID": "ses_sanitized_export",
+        "parentID": "msg_export_user_1",
+        "role": "assistant",
+        "time": {
+          "created": 1775260810000,
+          "completed": 1775260840000
+        },
+        "providerID": "openai",
+        "modelID": "gpt-5.4",
+        "finish": "tool-calls",
+        "path": {
+          "cwd": "/private/TURNSPAN_PRIVATE_CANARY_7f3b",
+          "root": "/private"
+        },
+        "tokens": {
+          "input": 120,
+          "output": 50,
+          "reasoning": 10,
+          "cache": {
+            "read": 40,
+            "write": 10
+          }
+        }
+      },
+      "parts": [
+        {
+          "id": "part_export_tool",
+          "type": "tool",
+          "tool": "shell",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "TURNSPAN_PRIVATE_CANARY_7f3b"
+            },
+            "output": "TURNSPAN_PRIVATE_CANARY_7f3b tool output"
+          }
+        }
+      ]
+    },
+    {
+      "info": {
+        "id": "msg_export_assistant_2",
+        "sessionID": "ses_sanitized_export",
+        "parentID": "msg_export_user_1",
+        "role": "assistant",
+        "time": {
+          "created": 1775260841000,
+          "completed": 1775260900000
+        },
+        "providerID": "openai",
+        "modelID": "gpt-5.4",
+        "finish": "stop",
+        "tokens": {
+          "input": 50,
+          "output": 30,
+          "reasoning": 10,
+          "cache": {
+            "read": 10,
+            "write": 0
+          }
+        }
+      },
+      "parts": [
+        {
+          "id": "part_export_response",
+          "type": "text",
+          "text": "TURNSPAN_PRIVATE_CANARY_7f3b response"
+        }
+      ]
+    },
+    {
+      "info": {
+        "id": "msg_export_user_2",
+        "sessionID": "ses_sanitized_export",
+        "role": "user",
+        "time": {
+          "created": 1775260980000
+        }
+      },
+      "parts": [
+        {
+          "id": "part_export_prompt_2",
+          "type": "text",
+          "text": "TURNSPAN_PRIVATE_CANARY_7f3b interrupted prompt"
+        }
+      ]
+    },
+    {
+      "info": {
+        "id": "msg_export_assistant_error",
+        "sessionID": "ses_sanitized_export",
+        "parentID": "msg_export_user_2",
+        "role": "assistant",
+        "time": {
+          "created": 1775260985000,
+          "completed": 1775261000000
+        },
+        "providerID": "anthropic",
+        "modelID": "claude-opus-4-1",
+        "finish": "error",
+        "error": {
+          "name": "MessageAbortedError",
+          "message": "TURNSPAN_PRIVATE_CANARY_7f3b provider error"
+        },
+        "tokens": {
+          "input": 30,
+          "output": 10,
+          "reasoning": 5,
+          "cache": {
+            "read": 5,
+            "write": 0
+          }
+        }
+      },
+      "parts": [
+        {
+          "id": "part_export_error",
+          "type": "text",
+          "text": "TURNSPAN_PRIVATE_CANARY_7f3b partial response"
+        }
+      ]
+    }
+  ]
+}

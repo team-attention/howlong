@@ -40,6 +40,10 @@ Token calculation:
 
 Limits:
 
+- Active Codex rollouts are normally under
+  `$CODEX_HOME/sessions/YYYY/MM/DD/rollout-*.jsonl`; archived `.jsonl` files
+  are also accepted when selected directly.
+- Compressed `.jsonl.zst` archives are not decoded by this browser build.
 - Token records do not always carry a `turn_id`; concurrently interleaved or
   replayed histories can only be assigned to the most recent active turn.
 - Stable Codex 0.144.5 does not persist every unexpected completion error.
@@ -53,10 +57,11 @@ Supported:
 - Main project transcripts and sidechain-only subagent transcripts.
 - Human user boundaries.
 - Tool-result user records inside a turn.
-- Repeated assistant-update deduplication by `(message.id, requestId)`.
+- Repeated assistant-update deduplication by `message.id`, with component-wise
+  maximum token merging.
 - Input, output, cache creation/write, and cache read tokens.
 - `system/turn_duration`.
-- `interruptedMessageId`, assistant error, and `isApiErrorMessage`.
+- Matching `interruptedMessageId`, assistant error, and `isApiErrorMessage`.
 - `pendingBackgroundAgentCount` and `pendingWorkflowCount`.
 - Clean assistant stops are `end_turn` and `stop_sequence`.
 
@@ -75,13 +80,29 @@ Limits:
 - Embedded sidechain replays in a parent file can be difficult to distinguish
   from a coherent uploaded sidechain file; usage deduplication reduces but
   cannot eliminate every possible replay ambiguity.
+- Uploading a parent transcript and its separately stored subagent transcripts
+  together can double-count work across source files; Turnspan does not expose
+  or retain the private lineage IDs needed for cross-file reconciliation.
 - A recorded duration after `max_tokens`, `tool_use`, or another non-clean
   final stop remains `incomplete` and cannot win the longest-run comparison.
 
-## OpenCode SQLite
+## OpenCode export JSON and SQLite
+
+Preferred input:
+
+```bash
+opencode export <sessionID> --sanitize > opencode-export.json
+```
+
+The documented export shape is `{ info, messages: [{ info, parts }] }`.
+Turnspan reads only role, parent relationship, timestamps, provider/model,
+finish, error category, and token counters from message `info`. It ignores
+session titles/directories/metadata, all `parts`, paths, and error text. The
+same allowlist is used for sanitized and unsanitized exports.
 
 Supported:
 
+- Official OpenCode export JSON.
 - SQLite database magic-byte detection.
 - Legacy `message` table.
 - Current `session_message` table with `seq`.
@@ -102,6 +123,8 @@ Timing:
 
 Limits:
 
+- Export JSON is the documented portable contract. Direct SQLite parsing is
+  best-effort support for internal schemas verified against OpenCode 1.18.2.
 - A main database file cannot contain uncheckpointed frames from its companion
   `-wal` file. WAL-header sources are therefore marked as potentially stale.
 - Turnspan does not accept a separate `-wal`/`-shm` set. Make a SQLite backup
@@ -127,8 +150,10 @@ Duration and token fields should be interpreted with their provider semantics.
 ## Browser limits
 
 - Up to 100 selected sources.
-- Up to 512 MiB per source.
-- Up to 1 GiB combined selection.
+- Up to 256 MiB per source.
+- Up to 512 MiB combined selection.
+- Up to 10,000 emitted runs per source and 50,000 emitted runs total; excess
+  runs are skipped with `RUN_LIMIT_REACHED`.
 - Format detection inspects at most the first 80 nonblank JSONL records and
   applies the 8 MiB record guard before `JSON.parse`.
 - JSONL is parsed in a Worker but currently decoded as one file string; actual

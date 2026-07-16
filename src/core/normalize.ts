@@ -1,7 +1,7 @@
 import type { TokenUsage, WarningCode } from "./types";
 
 const MAX_MODEL_LENGTH = 120;
-const MODEL_PATTERN = /^[\p{L}\p{N}._:/+@()[\] -]+$/u;
+const MODEL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:/+@()[\]-]*$/;
 
 export function asRecord(value: unknown): Record<string, unknown> | undefined {
   return value !== null && typeof value === "object" && !Array.isArray(value)
@@ -141,6 +141,29 @@ export function addTokenUsage(...items: TokenUsage[]): TokenUsage {
       .filter((value): value is number => value !== undefined);
     if (values.length > 0) {
       result[key] = values.reduce((sum, value) => sum + value, 0);
+    }
+  }
+
+  return result;
+}
+
+export function maxTokenUsage(...items: TokenUsage[]): TokenUsage {
+  const result: TokenUsage = {};
+  const keys = [
+    "input",
+    "output",
+    "cacheRead",
+    "cacheWrite",
+    "reasoning",
+    "total",
+  ] as const;
+
+  for (const key of keys) {
+    const values = items
+      .map((item) => item[key])
+      .filter((value): value is number => value !== undefined);
+    if (values.length > 0) {
+      result[key] = Math.max(...values);
     }
   }
 

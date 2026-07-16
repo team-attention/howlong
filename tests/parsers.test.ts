@@ -12,7 +12,10 @@ import {
   parseJsonlText,
 } from "../src/parsers/jsonl";
 import { MAX_JSONL_LINE_BYTES } from "../src/parsers/limits";
-import { parseOpenCodeSqlite } from "../src/parsers/opencode";
+import {
+  parseOpenCodeExportJson,
+  parseOpenCodeSqlite,
+} from "../src/parsers/opencode";
 import type { ParsedSource, Provider } from "../src/core/types";
 
 const fixture = (name: string) =>
@@ -113,6 +116,37 @@ describe("Codex JSONL", () => {
       warningCodes: expect.arrayContaining(["TOKEN_USAGE_PARTIAL"]),
     });
   });
+
+  it("accepts official Unix-second turn timestamps", () => {
+    const parsed = parseCodexJsonl(
+      [
+        JSON.stringify({
+          timestamp: "2026-04-01T00:00:00.000Z",
+          type: "event_msg",
+          payload: {
+            type: "task_started",
+            turn_id: "seconds-turn",
+            started_at: 1_775_001_600,
+          },
+        }),
+        JSON.stringify({
+          timestamp: "2026-04-01T00:00:05.000Z",
+          type: "event_msg",
+          payload: {
+            type: "task_complete",
+            turn_id: "seconds-turn",
+            completed_at: 1_775_001_605,
+          },
+        }),
+      ].join("\n"),
+    );
+
+    expect(parsed.runs[0]).toMatchObject({
+      startedAt: "2026-04-01T00:00:00.000Z",
+      endedAt: "2026-04-01T00:00:05.000Z",
+      durationMs: 5_000,
+    });
+  });
 });
 
 describe("Claude Code JSONL", () => {
@@ -179,6 +213,145 @@ describe("Claude Code JSONL", () => {
       status: "incomplete",
       completionEvidence: "non-clean-terminal",
       durationMs: 30_000,
+    });
+  });
+
+  it("deduplicates message usage by message ID and scans every tool-result block", () => {
+    const parsed = parseClaudeJsonl(
+      [
+        JSON.stringify({
+          type: "user",
+          uuid: "user-dedupe",
+          sessionId: "sanitized",
+          timestamp: "2026-04-02T07:00:00.000Z",
+          message: { role: "user", content: PRIVATE_CANARY },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          uuid: "assistant-dedupe-a",
+          requestId: "request-a",
+          sessionId: "sanitized",
+          timestamp: "2026-04-02T07:00:10.000Z",
+          message: {
+            id: "message-shared",
+            role: "assistant",
+            model: "claude-opus-4-1",
+            stop_reason: "tool_use",
+            usage: { input_tokens: 100, output_tokens: 40 },
+          },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          uuid: "assistant-dedupe-b",
+          requestId: "request-b",
+          sessionId: "sanitized",
+          timestamp: "2026-04-02T07:00:11.000Z",
+          message: {
+            id: "message-shared",
+            role: "assistant",
+            model: "claude-opus-4-1",
+            stop_reason: "tool_use",
+            usage: {
+              input_tokens: 80,
+              output_tokens: 50,
+              cache_read_input_tokens: 30,
+            },
+          },
+        }),
+        JSON.stringify({
+          type: "user",
+          uuid: "tool-result-later-block",
+          sessionId: "sanitized",
+          timestamp: "2026-04-02T07:00:20.000Z",
+          message: {
+            role: "user",
+            content: [
+              { type: "text", text: "synthetic wrapper" },
+              { type: "tool_result", content: PRIVATE_CANARY },
+            ],
+          },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          uuid: "assistant-final",
+          requestId: "request-final",
+          sessionId: "sanitized",
+          timestamp: "2026-04-02T07:01:00.000Z",
+          message: {
+            id: "message-final",
+            role: "assistant",
+            model: "claude-opus-4-1",
+            stop_reason: "end_turn",
+            usage: { input_tokens: 20, output_tokens: 10 },
+          },
+        }),
+        JSON.stringify({
+          type: "system",
+          subtype: "turn_duration",
+          sessionId: "sanitized",
+          timestamp: "2026-04-02T07:01:00.000Z",
+          durationMs: 60_000,
+        }),
+      ].join("\n"),
+    );
+
+    expect(parsed.runs).toHaveLength(1);
+    expect(parsed.runs[0]).toMatchObject({
+      status: "completed",
+      tokens: {
+        input: 120,
+        output: 60,
+        cacheRead: 30,
+        total: 210,
+      },
+    });
+  });
+
+  it("ignores an interruption marker that targets another assistant message", () => {
+    const parsed = parseClaudeJsonl(
+      [
+        JSON.stringify({
+          type: "user",
+          uuid: "user-current",
+          sessionId: "sanitized",
+          timestamp: "2026-04-02T08:00:00.000Z",
+          message: { role: "user", content: PRIVATE_CANARY },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          uuid: "assistant-current",
+          sessionId: "sanitized",
+          timestamp: "2026-04-02T08:00:10.000Z",
+          message: {
+            id: "message-current",
+            role: "assistant",
+            model: "claude-opus-4-1",
+            stop_reason: "end_turn",
+            usage: { input_tokens: 10, output_tokens: 5 },
+          },
+        }),
+        JSON.stringify({
+          type: "user",
+          uuid: "stale-interrupt",
+          sessionId: "sanitized",
+          timestamp: "2026-04-02T08:00:11.000Z",
+          interruptedMessageId: "message-from-another-turn",
+          message: { role: "user", content: PRIVATE_CANARY },
+        }),
+        JSON.stringify({
+          type: "system",
+          subtype: "turn_duration",
+          sessionId: "sanitized",
+          timestamp: "2026-04-02T08:00:15.000Z",
+          durationMs: 15_000,
+        }),
+      ].join("\n"),
+    );
+
+    expect(parsed.runs).toHaveLength(1);
+    expect(parsed.runs[0]).toMatchObject({
+      status: "completed",
+      completionEvidence: "explicit-duration",
     });
   });
 });
@@ -262,6 +435,109 @@ describe("OpenCode SQLite", () => {
   });
 });
 
+describe("OpenCode export JSON", () => {
+  it("reads the official export shape through a strict metadata allowlist", () => {
+    const parsed = parseOpenCodeExportJson(
+      textFixture("opencode-export.json"),
+    );
+
+    expect(parsed?.runs).toHaveLength(2);
+    expect(parsed?.runs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          status: "completed",
+          durationMs: 100_000,
+          model: "openai/gpt-5.4",
+          tokens: expect.objectContaining({ total: 330 }),
+        }),
+        expect.objectContaining({
+          status: "interrupted",
+          model: "anthropic/claude-opus-4-1",
+        }),
+      ]),
+    );
+    expect(JSON.stringify(parsed)).not.toContain(PRIVATE_CANARY);
+  });
+
+  it("rejects unrelated JSON", () => {
+    expect(
+      parseOpenCodeExportJson('{"messages":[],"private":"source"}'),
+    ).toBeUndefined();
+  });
+
+  it("ignores private metadata fallbacks and orphan assistant parents", () => {
+    const parsed = parseOpenCodeExportJson(
+      JSON.stringify({
+        info: { id: "ses_metadata_guard" },
+        messages: [
+          {
+            info: {
+              id: "user-before-orphan",
+              role: "user",
+              time: { created: 1_775_260_800_000 },
+            },
+            parts: [],
+          },
+          {
+            info: {
+              id: "orphan-assistant",
+              parentID: "missing-user",
+              role: "assistant",
+              time: {
+                created: 1_775_260_801_000,
+                completed: 1_775_260_802_000,
+              },
+              providerID: "private",
+              modelID: PRIVATE_CANARY,
+              finish: "stop",
+              tokens: { input: 999, output: 999 },
+            },
+            parts: [],
+          },
+          {
+            info: {
+              id: "valid-user",
+              role: "user",
+              time: { created: 1_775_260_810_000 },
+            },
+            parts: [],
+          },
+          {
+            info: {
+              id: "valid-assistant",
+              parentID: "valid-user",
+              role: "assistant",
+              time: {
+                created: 1_775_260_811_000,
+                completed: 1_775_260_820_000,
+              },
+              finish: "stop",
+              tokens: { input: 10, output: 5 },
+              metadata: {
+                assistant: {
+                  providerID: "private",
+                  modelID: PRIVATE_CANARY,
+                },
+                error: { message: PRIVATE_CANARY },
+              },
+            },
+            parts: [{ type: "text", text: PRIVATE_CANARY }],
+          },
+        ],
+      }),
+    );
+
+    expect(parsed?.runs).toHaveLength(1);
+    expect(parsed?.runs[0]).toMatchObject({
+      status: "completed",
+      model: undefined,
+      tokens: { total: 15 },
+      warningCodes: expect.arrayContaining(["MODEL_UNAVAILABLE"]),
+    });
+    expect(JSON.stringify(parsed)).not.toContain(PRIVATE_CANARY);
+  });
+});
+
 describe("bounded JSONL detection", () => {
   it("skips an oversized line before JSON.parse and still detects a later source row", () => {
     const oversized = "x".repeat(MAX_JSONL_LINE_BYTES + 1);
@@ -337,31 +613,60 @@ describe("privacy boundary", () => {
       await parseOpenCodeSqlite(
         new Uint8Array(readFileSync(fixture("opencode-latest.sqlite"))),
       ),
+      parseOpenCodeExportJson(textFixture("opencode-export.json")),
     ];
     const result = buildAnalysisResult(sources);
     const serializedResult = JSON.stringify(result);
     const serializedExport = serializeMetadataExport(result);
+    const metadataExport = createMetadataExport(result);
 
     expect(serializedResult).not.toContain(PRIVATE_CANARY);
     expect(serializedExport).not.toContain(PRIVATE_CANARY);
-    expect(Object.keys(createMetadataExport(result).runs[0]!)).toEqual([
-      "id",
-      "provider",
-      "sourceOrdinal",
-      "turnOrdinal",
-      "startedAt",
-      "endedAt",
-      "durationMs",
-      "completionStatus",
-      "completionEvidence",
-      "inputTokens",
-      "outputTokens",
-      "cacheReadTokens",
-      "cacheWriteTokens",
-      "reasoningTokens",
-      "totalTokens",
-      "model",
-      "warningCodes",
+    expect(Object.keys(metadataExport)).toEqual([
+      "schemaVersion",
+      "product",
+      "summary",
+      "sources",
+      "runs",
     ]);
+    expect(Object.keys(metadataExport.summary)).toEqual([
+      "sources",
+      "runs",
+      "completed",
+      "interrupted",
+      "incomplete",
+      "tokens",
+      "longestCompletedRunId",
+    ]);
+    for (const source of metadataExport.sources) {
+      expect(Object.keys(source)).toEqual([
+        "sourceOrdinal",
+        "provider",
+        "runCount",
+        "skippedRecords",
+        "warningCodes",
+      ]);
+    }
+    for (const run of metadataExport.runs) {
+      expect(Object.keys(run)).toEqual([
+        "id",
+        "provider",
+        "sourceOrdinal",
+        "turnOrdinal",
+        "startedAt",
+        "endedAt",
+        "durationMs",
+        "completionStatus",
+        "completionEvidence",
+        "inputTokens",
+        "outputTokens",
+        "cacheReadTokens",
+        "cacheWriteTokens",
+        "reasoningTokens",
+        "totalTokens",
+        "model",
+        "warningCodes",
+      ]);
+    }
   });
 });

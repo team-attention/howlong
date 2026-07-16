@@ -30,16 +30,17 @@ const ERROR_MESSAGES: Record<
 
 function AppMark() {
   return (
-    <div className="app-mark" aria-label="Turnspan">
+    <span className="app-mark" aria-label="Turnspan">
       <span className="app-mark__word">Turnspan</span>
       <span className="app-mark__line" aria-hidden="true" />
-    </div>
+    </span>
   );
 }
 
 export function App() {
   const workerRef = useRef<Worker | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const focusInputWhenReadyRef = useRef(false);
   const [workerGeneration, setWorkerGeneration] = useState(0);
   const [ready, setReady] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -74,6 +75,14 @@ export function App() {
           setResult(message.result);
           setAnalyzing(false);
           setError(null);
+          if (inputRef.current) {
+            inputRef.current.value = "";
+          }
+          if (workerRef.current === worker) {
+            workerRef.current = null;
+            worker.terminate();
+            setReady(false);
+          }
           return;
         }
         setError(ERROR_MESSAGES[message.code]);
@@ -89,6 +98,14 @@ export function App() {
     };
   }, [workerGeneration]);
 
+  useEffect(() => {
+    if (!ready || result || !focusInputWhenReadyRef.current) {
+      return;
+    }
+    focusInputWhenReadyRef.current = false;
+    inputRef.current?.focus();
+  }, [ready, result]);
+
   const resetWorker = useCallback(() => {
     workerRef.current?.terminate();
     workerRef.current = null;
@@ -97,6 +114,7 @@ export function App() {
   }, []);
 
   const clear = useCallback(() => {
+    focusInputWhenReadyRef.current = true;
     resetWorker();
     setAnalyzing(false);
     setProgress({ completed: 0, total: 0 });
@@ -124,7 +142,9 @@ export function App() {
   );
 
   const handleInput = (event: ChangeEvent<HTMLInputElement>) => {
-    analyzeFiles(Array.from(event.currentTarget.files ?? []));
+    const files = Array.from(event.currentTarget.files ?? []);
+    event.currentTarget.value = "";
+    analyzeFiles(files);
   };
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
@@ -138,6 +158,7 @@ export function App() {
   const cancel = () => {
     const message: WorkerRequest = { type: "cancel" };
     workerRef.current?.postMessage(message);
+    focusInputWhenReadyRef.current = true;
     resetWorker();
     setAnalyzing(false);
     setProgress({ completed: 0, total: 0 });
@@ -160,10 +181,15 @@ export function App() {
   };
 
   const statusMessage = analyzing
-    ? `Analyzing source ${progress.completed + 1} of ${progress.total}…`
-    : ready
-      ? "Parser ready. Files stay in this tab."
-      : "Preparing the local parser…";
+    ? `Analyzing source ${Math.min(
+        progress.completed + 1,
+        progress.total,
+      )} of ${progress.total}…`
+    : result
+      ? "Analysis complete. Clear the result to analyze another selection."
+      : ready
+        ? "Parser ready. Files stay in this tab."
+        : "Preparing the local parser…";
 
   return (
     <>
@@ -205,7 +231,7 @@ export function App() {
             <div>
               <h2 id="import-title">Bring session files to the browser.</h2>
               <p>
-                Codex JSONL · Claude Code JSONL · OpenCode SQLite
+                Codex JSONL · Claude Code JSONL · OpenCode export JSON / SQLite
               </p>
             </div>
           </div>
@@ -258,7 +284,7 @@ export function App() {
               output are never shown or exported.
             </p>
             <p className="mono">
-              512 MiB/source · 1 GiB total · 100 sources
+              256 MiB/source · 512 MiB total · 100 sources
             </p>
           </div>
 

@@ -75,7 +75,10 @@ function SortButton({
 
 function RunMobile({ run }: { run: NormalizedRun }) {
   return (
-    <article className="mobile-run">
+    <article
+      className="mobile-run"
+      aria-label={`${run.id}, ${statusLabel(run.status)}`}
+    >
       <div className="mobile-run__topline">
         <span className={`status status--${run.status}`}>
           {statusLabel(run.status)}
@@ -274,6 +277,10 @@ export function Results({ result, onDownload, onClear }: ResultsProps) {
         <>
           <div className="table-shell">
             <table>
+              <caption className="sr-only">
+                Normalized session runs, sortable by provider, status,
+                duration, start time, and tokens.
+              </caption>
               <thead>
                 <tr>
                   <th scope="col">Run</th>

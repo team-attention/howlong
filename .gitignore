@@ -10,5 +10,19 @@
 .DS_Store
 .env*
 *.log
-*.sqlite-shm
-*.sqlite-wal
+
+# Real agent transcripts and databases are local-sensitive by default.
+/private-sessions/
+/sessions/
+*.jsonl
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.session.json
+opencode-export*.json
+
+# Only reviewed, synthetic fixtures belong in version control.
+!tests/fixtures/*.jsonl
+!tests/fixtures/*.sqlite
+!tests/fixtures/opencode-export.json
