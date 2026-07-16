@@ -147,6 +147,8 @@ It verifies:
 - no horizontal overflow;
 - visible keyboard focus and accessible file input controls;
 - automatic focus and scrolling to the longest clean run after first analysis;
+- compact replacement file input plus a page-wide file-drop target while
+  results are visible;
 - repeat file selection that atomically replaces successful results while
   preserving the current result when replacement input is invalid;
 - fail-closed behavior for unsupported input.

@@ -271,7 +271,7 @@ body:has(#session-files:focus-visible) .dropzone {
 }
 
 .results-header {
-  margin-bottom: 38px;
+  margin-bottom: 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -291,15 +291,7 @@ body:has(#session-files:focus-visible) .dropzone {
   outline: 0;
 }
 
-.reanalyze-action {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  color: var(--muted);
-  font-size: 0.76rem;
-}
-
-.reanalyze-action button,
+.replacement-drop button,
 .export-button {
   min-height: 38px;
   padding: 0 14px;
@@ -315,16 +307,86 @@ body:has(#session-files:focus-visible) .dropzone {
     background-color 140ms ease;
 }
 
-.reanalyze-action button:hover,
+.replacement-drop button:hover,
 .export-button:hover {
   color: var(--text);
   border-color: rgb(255 255 255 / 25%);
   background: var(--surface);
 }
 
-.reanalyze-action button:disabled {
+.replacement-drop {
+  min-height: 60px;
+  margin-bottom: 24px;
+  padding: 0 18px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
+  background: var(--surface);
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    color 160ms ease,
+    background-color 160ms ease;
+}
+
+.replacement-drop > span:first-child {
+  color: var(--yellow);
+  font-size: 1rem;
+}
+
+.replacement-drop strong {
+  color: var(--secondary);
+  font-size: 0.82rem;
+  font-weight: 510;
+}
+
+.replacement-drop > span:last-child {
+  margin-left: auto;
+  font-size: 0.75rem;
+}
+
+.replacement-drop:hover,
+.replacement-drop--active,
+body:has(#session-files:focus-visible) .replacement-drop {
+  border-color: var(--yellow);
+  color: var(--secondary);
+  background: #121312;
+}
+
+body:has(#session-files:focus-visible) .replacement-drop {
+  outline: 2px solid var(--yellow);
+  outline-offset: 3px;
+}
+
+.replacement-drop--busy {
+  justify-content: space-between;
+  cursor: default;
+}
+
+.replacement-drop--disabled {
   cursor: wait;
-  opacity: 0.5;
+  opacity: 0.52;
+}
+
+.replacement-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  border: 2px solid var(--yellow);
+  display: grid;
+  place-items: center;
+  color: var(--text);
+  background: rgb(8 9 10 / 94%);
+  pointer-events: none;
+}
+
+.replacement-overlay strong {
+  font-size: clamp(1.75rem, 4vw, 3.5rem);
+  font-weight: 510;
+  letter-spacing: -0.045em;
 }
 
 .results-update-error {
@@ -774,19 +836,38 @@ footer a:hover {
   }
 
   .results-header {
-    margin-bottom: 28px;
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 18px;
+    margin-bottom: 16px;
   }
 
-  .reanalyze-action {
+  .replacement-drop {
+    min-height: 64px;
+    padding: 10px 14px;
+    flex-wrap: wrap;
+    gap: 5px 10px;
+  }
+
+  .replacement-drop strong {
+    flex: 1;
+    font-size: 0.78rem;
+  }
+
+  .replacement-drop > span:last-child {
     width: 100%;
-    justify-content: space-between;
+    margin: -5px 0 0 25px;
+    font-size: 0.7rem;
   }
 
-  .reanalyze-action button {
-    min-width: 142px;
+  .replacement-drop--busy {
+    flex-wrap: nowrap;
+  }
+
+  .replacement-drop--busy > span:first-child {
+    flex: 1;
+  }
+
+  .replacement-drop--busy > span:last-child {
+    width: auto;
+    margin: 0;
   }
 
   .longest-run {

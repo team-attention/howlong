@@ -4,7 +4,7 @@ import {
   useRef,
   useState,
   type ChangeEvent,
-  type DragEvent,
+  type DragEvent as ReactDragEvent,
 } from "react";
 import { Results } from "./components/Results";
 import { serializeMetadataExport } from "./core/export";
@@ -40,9 +40,11 @@ export function App() {
   const resultRef = useRef<AnalysisResult | null>(null);
   const focusInputWhenReadyRef = useRef(false);
   const navigateAfterResultRef = useRef(false);
+  const replacementDragDepthRef = useRef(0);
   const [workerGeneration, setWorkerGeneration] = useState(0);
   const [ready, setReady] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [replacementDragging, setReplacementDragging] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [progress, setProgress] = useState({ completed: 0, total: 0 });
   const [result, setResult] = useState<AnalysisResult | null>(null);
@@ -165,17 +167,77 @@ export function App() {
     analyzeFiles(files);
   };
 
-  const handleDrop = (event: DragEvent<HTMLLabelElement>) => {
+  useEffect(() => {
+    if (!result || !ready || analyzing) {
+      replacementDragDepthRef.current = 0;
+      setReplacementDragging(false);
+      return;
+    }
+
+    const hasFiles = (event: globalThis.DragEvent) =>
+      Array.from(event.dataTransfer?.types ?? []).includes("Files");
+
+    const handleDragEnter = (event: globalThis.DragEvent) => {
+      if (!hasFiles(event)) return;
+      event.preventDefault();
+      replacementDragDepthRef.current += 1;
+      setReplacementDragging(true);
+    };
+
+    const handleDragOver = (event: globalThis.DragEvent) => {
+      if (!hasFiles(event)) return;
+      event.preventDefault();
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = "copy";
+      }
+      setReplacementDragging(true);
+    };
+
+    const handleDragLeave = (event: globalThis.DragEvent) => {
+      if (!hasFiles(event)) return;
+      replacementDragDepthRef.current = Math.max(
+        0,
+        replacementDragDepthRef.current - 1,
+      );
+      if (replacementDragDepthRef.current === 0) {
+        setReplacementDragging(false);
+      }
+    };
+
+    const handleReplacementDrop = (event: globalThis.DragEvent) => {
+      if (!hasFiles(event)) return;
+      event.preventDefault();
+      replacementDragDepthRef.current = 0;
+      setReplacementDragging(false);
+      analyzeFiles(Array.from(event.dataTransfer?.files ?? []));
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      replacementDragDepthRef.current = 0;
+      setReplacementDragging(false);
+    };
+
+    window.addEventListener("dragenter", handleDragEnter);
+    window.addEventListener("dragover", handleDragOver);
+    window.addEventListener("dragleave", handleDragLeave);
+    window.addEventListener("drop", handleReplacementDrop);
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("dragenter", handleDragEnter);
+      window.removeEventListener("dragover", handleDragOver);
+      window.removeEventListener("dragleave", handleDragLeave);
+      window.removeEventListener("drop", handleReplacementDrop);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [analyzeFiles, analyzing, ready, result]);
+
+  const handleDrop = (event: ReactDragEvent<HTMLLabelElement>) => {
     event.preventDefault();
     setDragging(false);
     if (!analyzing) {
       analyzeFiles(Array.from(event.dataTransfer.files));
-    }
-  };
-
-  const chooseDifferentFiles = () => {
-    if (ready && !analyzing) {
-      inputRef.current?.click();
     }
   };
 
@@ -312,15 +374,21 @@ export function App() {
           <Results
             result={result}
             onDownload={download}
-            onChooseFiles={chooseDifferentFiles}
             canChooseFiles={ready && !analyzing}
             analyzing={analyzing}
             updateError={error ? ERROR_MESSAGES[error] : undefined}
             updateStatus={analyzing ? progressMessage : undefined}
             onCancel={cancel}
+            replacementDragging={replacementDragging}
           />
         )}
       </main>
+
+      {replacementDragging && (
+        <div className="replacement-overlay" aria-hidden="true">
+          <strong>Drop to replace this analysis</strong>
+        </div>
+      )}
 
       <footer>
         <span>Team Attention × Ralphthon</span>

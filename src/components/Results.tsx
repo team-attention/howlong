@@ -18,12 +18,12 @@ type SortDirection = "asc" | "desc";
 interface ResultsProps {
   result: AnalysisResult;
   onDownload: () => void;
-  onChooseFiles: () => void;
   canChooseFiles: boolean;
   analyzing: boolean;
   updateError?: string;
   updateStatus?: string;
   onCancel: () => void;
+  replacementDragging: boolean;
 }
 
 function statusRank(run: NormalizedRun) {
@@ -139,12 +139,12 @@ function RunMobile({ run }: { run: NormalizedRun }) {
 export function Results({
   result,
   onDownload,
-  onChooseFiles,
   canChooseFiles,
   analyzing,
   updateError,
   updateStatus,
   onCancel,
+  replacementDragging,
 }: ResultsProps) {
   const [sortKey, setSortKey] = useState<SortKey>("duration");
   const [direction, setDirection] = useState<SortDirection>("desc");
@@ -190,25 +190,27 @@ export function Results({
         <h2 id="results-title" tabIndex={-1}>
           Longest clean run
         </h2>
-        <div className="reanalyze-action">
-          {analyzing ? (
-            <>
-              <span role="status">{updateStatus ?? "Analyzing…"}</span>
-              <button type="button" onClick={onCancel}>
-                Cancel
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              onClick={onChooseFiles}
-              disabled={!canChooseFiles}
-            >
-              Analyze another
-            </button>
-          )}
-        </div>
       </div>
+
+      {analyzing ? (
+        <div className="replacement-drop replacement-drop--busy">
+          <span role="status">{updateStatus ?? "Analyzing…"}</span>
+          <button type="button" onClick={onCancel}>
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <label
+          className={`replacement-drop${
+            replacementDragging ? " replacement-drop--active" : ""
+          }${!canChooseFiles ? " replacement-drop--disabled" : ""}`}
+          htmlFor="session-files"
+        >
+          <span aria-hidden="true">↓</span>
+          <strong>Drop new files to replace this analysis</strong>
+          <span>or choose files</span>
+        </label>
+      )}
 
       {updateError && (
         <p className="results-update-error" role="alert">

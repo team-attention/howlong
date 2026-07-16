@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const fixtures = [
   "codex-stable.jsonl",
@@ -10,6 +10,26 @@ const fixtures = [
 ].map((name) => path.join(process.cwd(), "tests", "fixtures", name));
 
 const PRIVATE_CANARY = "TURNSPAN_PRIVATE_CANARY_7f3b";
+
+async function createFileTransfer(page: Page, filePath: string) {
+  const buffer = readFileSync(filePath);
+  return page.evaluateHandle(
+    ({ base64, name }) => {
+      const bytes = Uint8Array.from(atob(base64), (character) =>
+        character.charCodeAt(0),
+      );
+      const transfer = new DataTransfer();
+      transfer.items.add(
+        new File([bytes], name, { type: "application/json" }),
+      );
+      return transfer;
+    },
+    {
+      base64: buffer.toString("base64"),
+      name: path.basename(filePath),
+    },
+  );
+}
 
 test("analyzes local files offline without exposing raw content", async ({
   page,
@@ -105,9 +125,15 @@ test("analyzes local files offline without exposing raw content", async ({
     page.getByText("OpenCode WAL snapshot may be stale."),
   ).toBeVisible();
   await expect(page.locator(".metric-strip")).toContainText("12");
+  await expect(page.locator(".replacement-drop")).toContainText(
+    "Drop new files to replace this analysis",
+  );
+  await expect(page.locator(".replacement-drop")).toContainText(
+    "or choose files",
+  );
   await expect(
     page.getByRole("button", { name: "Analyze another" }),
-  ).toBeEnabled();
+  ).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Clear analysis" }),
   ).toHaveCount(0);
@@ -212,12 +238,40 @@ test("analyzes local files offline without exposing raw content", async ({
     expect(narrowOverflow).toBeLessThanOrEqual(0);
   }
 
-  const replacementChooserPromise = page.waitForEvent("filechooser");
-  await page
-    .getByRole("button", { name: "Analyze another" })
-    .click();
-  const replacementChooser = await replacementChooserPromise;
-  await replacementChooser.setFiles([fixtures[0]!]);
+  const replacementTransfer = await createFileTransfer(page, fixtures[0]!);
+  await page.evaluate((transfer) => {
+    window.dispatchEvent(
+      new DragEvent("dragenter", {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer: transfer,
+      }),
+    );
+  }, replacementTransfer);
+  await expect(page.locator(".replacement-overlay")).toBeVisible();
+  await expect(page.locator(".replacement-drop")).toHaveClass(
+    /replacement-drop--active/,
+  );
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".replacement-overlay")).toHaveCount(0);
+
+  await page.evaluate((transfer) => {
+    window.dispatchEvent(
+      new DragEvent("dragenter", {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer: transfer,
+      }),
+    );
+    window.dispatchEvent(
+      new DragEvent("drop", {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer: transfer,
+      }),
+    );
+  }, replacementTransfer);
+  await replacementTransfer.dispose();
   await expect(
     page.locator(".metric-strip > div").filter({ hasText: "Runs" }),
   ).toContainText("2");
@@ -259,9 +313,7 @@ test("invalid replacement preserves the current result", async ({ page }) => {
   await expect(page.getByTestId("longest-run")).toContainText("1m 0s");
 
   const chooserPromise = page.waitForEvent("filechooser");
-  await page
-    .getByRole("button", { name: "Analyze another" })
-    .click();
+  await page.locator(".replacement-drop").click();
   const chooser = await chooserPromise;
   await chooser.setFiles({
     name: "replacement-private.txt",
