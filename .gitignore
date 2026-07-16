@@ -1,0 +1,14 @@
+/node_modules
+/coverage
+/.vinext/
+/.wrangler/
+/dist/
+/test-results/
+/playwright-report/
+/screenshots/
+/artifacts/
+.DS_Store
+.env*
+*.log
+*.sqlite-shm
+*.sqlite-wal

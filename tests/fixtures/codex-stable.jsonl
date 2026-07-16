@@ -1,0 +1,11 @@
+{"timestamp":"2026-04-01T00:00:00.000Z","type":"session_meta","payload":{"id":"sanitized-session","base_instructions":"TURNSPAN_PRIVATE_CANARY_7f3b"}}
+{"timestamp":"2026-04-01T00:00:00.000Z","type":"event_msg","payload":{"type":"task_started","turn_id":"turn-a","started_at":1775001600000,"model_context_window":200000}}
+{"timestamp":"2026-04-01T00:00:00.010Z","type":"turn_context","payload":{"turn_id":"turn-a","model":"gpt-5.4-codex","cwd":"/sanitized"}}
+{"timestamp":"2026-04-01T00:00:00.020Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"TURNSPAN_PRIVATE_CANARY_7f3b prompt"}]}}
+{"timestamp":"2026-04-01T00:01:00.000Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":900,"cached_input_tokens":400,"output_tokens":100,"reasoning_output_tokens":20,"total_tokens":1000},"last_token_usage":{"input_tokens":900,"cached_input_tokens":400,"output_tokens":100,"reasoning_output_tokens":20,"total_tokens":1000}}}}
+{"timestamp":"2026-04-01T00:01:00.000Z","type":"event_msg","payload":{"type":"task_complete","turn_id":"turn-a","completed_at":1775001660000,"duration_ms":60000,"last_agent_message":"TURNSPAN_PRIVATE_CANARY_7f3b response"}}
+{"timestamp":"2026-04-01T00:02:00.000Z","type":"event_msg","payload":{"type":"turn_started","turn_id":"turn-b","started_at":1775001720000}}
+{"timestamp":"2026-04-01T00:02:00.010Z","type":"turn_context","payload":{"turn_id":"turn-b","model":"gpt-5.4-mini"}}
+{"timestamp":"2026-04-01T00:02:30.000Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":1400,"cached_input_tokens":700,"cache_write_input_tokens":30,"output_tokens":200,"reasoning_output_tokens":30,"total_tokens":1600},"last_token_usage":{"input_tokens":500,"cached_input_tokens":300,"cache_write_input_tokens":30,"output_tokens":100,"reasoning_output_tokens":10,"total_tokens":600}}}}
+{"timestamp":"2026-04-01T00:02:30.000Z","type":"event_msg","payload":{"type":"turn_aborted","turn_id":"turn-b","completed_at":1775001750000,"duration_ms":30000,"reason":"TURNSPAN_PRIVATE_CANARY_7f3b interruption"}}
+not-valid-json

@@ -1,0 +1,32 @@
+{
+  "name": "turnspan",
+  "version": "0.1.0",
+  "description": "Private browser-only runtime analysis for Codex, Claude Code, and OpenCode sessions.",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "preview": "vite preview --host 127.0.0.1 --port 4173",
+    "build": "tsc --noEmit && vite build",
+    "check": "tsc --noEmit --pretty false",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "bun run build && playwright test",
+    "verify": "bun run test && bun run check && bun run test:e2e"
+  },
+  "dependencies": {
+    "@sqlite.org/sqlite-wasm": "^3.53.0-build1",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.1.5",
+    "vitest": "^4.1.10"
+  }
+}
