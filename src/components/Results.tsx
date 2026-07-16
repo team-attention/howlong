@@ -1,12 +1,14 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { AnalysisResult, NormalizedRun } from "../core/types";
 import {
   evidenceLabel,
   formatDuration,
   formatNumber,
   formatTimestamp,
+  type Locale,
   providerLabel,
   statusLabel,
+  unavailableLabel,
 } from "../core/format";
 
 const PAGE_SIZE = 50;
@@ -16,9 +18,112 @@ type SortDirection = "asc" | "desc";
 
 interface ResultsProps {
   result: AnalysisResult;
+  locale: Locale;
   onDownload: () => void;
-  onClear: () => void;
+  onChooseFiles: () => void;
+  canChooseFiles: boolean;
+  analyzing: boolean;
+  updateError?: string;
+  updateStatus?: string;
+  onCancel: () => void;
 }
+
+const TEXT = {
+  en: {
+    title: "Longest completed run",
+    subtitle: "Only explicit, uninterrupted completion can qualify.",
+    chooseFiles: "Choose new files",
+    cancel: "Cancel",
+    analyzing: "Analyzing new files…",
+    start: "Start",
+    end: "End",
+    model: "Model",
+    totalTokens: "Total tokens",
+    noLongest: "No completed, uninterrupted run was found.",
+    noLongestHelp: "Incomplete and interrupted records are never promoted.",
+    walTitle: "OpenCode WAL snapshot detected.",
+    walText:
+      "Howlong can read the main database image, but a single file may omit uncheckpointed WAL frames. Close OpenCode and copy the database after a checkpoint for the freshest result.",
+    coverage: "Coverage summary",
+    sources: "Sources",
+    validRuns: "Valid runs",
+    completed: "Completed",
+    interrupted: "Interrupted",
+    incomplete: "Incomplete",
+    knownTokens: "Known tokens",
+    allRuns: "All runs",
+    download: "Download JSON",
+    caption:
+      "Normalized session runs, sortable by provider, status, duration, start time, and tokens.",
+    run: "Run",
+    provider: "Provider",
+    status: "Status",
+    duration: "Duration",
+    started: "Started",
+    ended: "Ended",
+    tokens: "Tokens",
+    runs: "Runs",
+    previous: "Previous",
+    next: "Next",
+    page: (page: number, count: number) => `Page ${page} / ${count}`,
+    pages: "Run table pages",
+    noRuns: "No valid runs were detected in these sources.",
+    sourceDetails: "Source coverage and skipped records",
+    source: (ordinal: number) =>
+      `Source ${String(ordinal).padStart(2, "0")}`,
+    runCount: (count: number) => `${count} runs`,
+    skippedCount: (count: number) => `${count} skipped records`,
+    sort: (label: string, direction?: SortDirection) =>
+      `Sort by ${label}${direction ? `, currently ${direction}` : ""}`,
+  },
+  ko: {
+    title: "가장 오래 완료된 실행",
+    subtitle: "명시적으로 중단 없이 완료된 실행만 선정합니다.",
+    chooseFiles: "새 파일 선택",
+    cancel: "취소",
+    analyzing: "새 파일 분석 중…",
+    start: "시작",
+    end: "종료",
+    model: "모델",
+    totalTokens: "전체 토큰",
+    noLongest: "중단 없이 완료된 실행을 찾지 못했습니다.",
+    noLongestHelp: "미완료 또는 중단된 기록은 최장 실행으로 선정하지 않습니다.",
+    walTitle: "OpenCode WAL 스냅샷을 감지했습니다.",
+    walText:
+      "Howlong은 기본 데이터베이스를 읽을 수 있지만 단일 파일에는 아직 체크포인트되지 않은 WAL 기록이 빠질 수 있습니다. 최신 결과가 필요하면 OpenCode를 종료하고 체크포인트 후 데이터베이스를 복사하세요.",
+    coverage: "분석 범위 요약",
+    sources: "소스",
+    validRuns: "유효 실행",
+    completed: "완료",
+    interrupted: "중단",
+    incomplete: "미완료",
+    knownTokens: "확인된 토큰",
+    allRuns: "모든 실행",
+    download: "JSON 다운로드",
+    caption:
+      "제공자, 상태, 실행시간, 시작 시각, 토큰으로 정렬할 수 있는 정규화된 세션 실행 목록입니다.",
+    run: "실행",
+    provider: "제공자",
+    status: "상태",
+    duration: "실행시간",
+    started: "시작",
+    ended: "종료",
+    tokens: "토큰",
+    runs: "실행 목록",
+    previous: "이전",
+    next: "다음",
+    page: (page: number, count: number) => `${page} / ${count} 페이지`,
+    pages: "실행 목록 페이지",
+    noRuns: "유효한 실행을 찾지 못했습니다.",
+    sourceDetails: "소스 범위와 제외된 레코드",
+    source: (ordinal: number) =>
+      `소스 ${String(ordinal).padStart(2, "0")}`,
+    runCount: (count: number) => `실행 ${count}개`,
+    skippedCount: (count: number) => `제외 ${count}개`,
+    sort: (label: string, direction?: SortDirection) =>
+      `${label} 정렬${direction ? `, 현재 ${direction}` : ""}`,
+  },
+};
 
 function statusRank(run: NormalizedRun) {
   if (run.status === "completed") return 0;
@@ -52,12 +157,14 @@ function SortButton({
   activeKey,
   direction,
   onSort,
+  sortLabel,
 }: {
   label: string;
   sortKey: SortKey;
   activeKey: SortKey;
   direction: SortDirection;
   onSort: (key: SortKey) => void;
+  sortLabel: (label: string, direction?: SortDirection) => string;
 }) {
   const active = sortKey === activeKey;
   return (
@@ -65,7 +172,7 @@ function SortButton({
       type="button"
       className="sort-button"
       onClick={() => onSort(sortKey)}
-      aria-label={`Sort by ${label}${active ? `, currently ${direction}` : ""}`}
+      aria-label={sortLabel(label, active ? direction : undefined)}
     >
       {label}
       <span aria-hidden="true">{active ? (direction === "asc" ? "↑" : "↓") : "↕"}</span>
@@ -73,28 +180,35 @@ function SortButton({
   );
 }
 
-function RunMobile({ run }: { run: NormalizedRun }) {
+function RunMobile({
+  run,
+  locale,
+}: {
+  run: NormalizedRun;
+  locale: Locale;
+}) {
+  const text = TEXT[locale];
   return (
     <article
       className="mobile-run"
-      aria-label={`${run.id}, ${statusLabel(run.status)}`}
+      aria-label={`${run.id}, ${statusLabel(run.status, locale)}`}
     >
       <div className="mobile-run__topline">
         <span className={`status status--${run.status}`}>
-          {statusLabel(run.status)}
+          {statusLabel(run.status, locale)}
         </span>
         <span className="mono">{run.id}</span>
       </div>
       <strong className="mobile-run__duration">
-        {formatDuration(run.durationMs)}
+        {formatDuration(run.durationMs, locale)}
       </strong>
       <dl>
         <div>
-          <dt>Provider</dt>
-          <dd>{providerLabel(run.provider)}</dd>
+          <dt>{text.provider}</dt>
+          <dd>{providerLabel(run.provider, locale)}</dd>
         </div>
         <div>
-          <dt>Started</dt>
+          <dt>{text.started}</dt>
           <dd>
             <time dateTime={run.startedAt}>
               {formatTimestamp(run.startedAt)}
@@ -102,31 +216,42 @@ function RunMobile({ run }: { run: NormalizedRun }) {
           </dd>
         </div>
         <div>
-          <dt>Ended</dt>
+          <dt>{text.ended}</dt>
           <dd>
             {run.endedAt ? (
               <time dateTime={run.endedAt}>
                 {formatTimestamp(run.endedAt)}
               </time>
             ) : (
-              "Unavailable"
+              unavailableLabel(locale)
             )}
           </dd>
         </div>
         <div>
-          <dt>Model</dt>
-          <dd>{run.model ?? "Unavailable"}</dd>
+          <dt>{text.model}</dt>
+          <dd>{run.model ?? unavailableLabel(locale)}</dd>
         </div>
         <div>
-          <dt>Tokens</dt>
-          <dd>{formatNumber(run.tokens.total)}</dd>
+          <dt>{text.tokens}</dt>
+          <dd>{formatNumber(run.tokens.total, locale)}</dd>
         </div>
       </dl>
     </article>
   );
 }
 
-export function Results({ result, onDownload, onClear }: ResultsProps) {
+export function Results({
+  result,
+  locale,
+  onDownload,
+  onChooseFiles,
+  canChooseFiles,
+  analyzing,
+  updateError,
+  updateStatus,
+  onCancel,
+}: ResultsProps) {
+  const text = TEXT[locale];
   const [sortKey, setSortKey] = useState<SortKey>("duration");
   const [direction, setDirection] = useState<SortDirection>("desc");
   const [page, setPage] = useState(1);
@@ -161,18 +286,55 @@ export function Results({ result, onDownload, onClear }: ResultsProps) {
     setPage(1);
   };
 
+  useEffect(() => {
+    setPage(1);
+  }, [result]);
+
   return (
     <section id="results" className="results" aria-labelledby="results-title">
-      <div className="section-heading">
-        <p className="eyebrow">Analysis / 01</p>
+      <div className="results-header">
         <div>
-          <h2 id="results-title">The longest clean run</h2>
-          <p>
-            Only a run with an explicit, non-interrupted terminal signal can
-            win.
-          </p>
+          <h2 id="results-title" tabIndex={-1}>
+            {text.title}
+          </h2>
+          <p>{text.subtitle}</p>
+        </div>
+        <div className="reanalyze-action">
+          {analyzing ? (
+            <>
+              <button
+                type="button"
+                className="button button--accent"
+                disabled
+              >
+                {updateStatus ?? text.analyzing}
+              </button>
+              <button
+                type="button"
+                className="reanalyze-action__cancel"
+                onClick={onCancel}
+              >
+                {text.cancel}
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              className="button button--accent"
+              onClick={onChooseFiles}
+              disabled={!canChooseFiles}
+            >
+              {text.chooseFiles}
+            </button>
+          )}
         </div>
       </div>
+
+      {updateError && (
+        <p className="results-update-error" role="alert">
+          {updateError}
+        </p>
+      )}
 
       {longest ? (
         <article className="longest-run" data-testid="longest-run">
@@ -181,14 +343,14 @@ export function Results({ result, onDownload, onClear }: ResultsProps) {
           </div>
           <div className="longest-run__primary">
             <p>
-              {providerLabel(longest.provider)} · {longest.id}
+              {providerLabel(longest.provider, locale)} · {longest.id}
             </p>
-            <strong>{formatDuration(longest.durationMs)}</strong>
-            <span>{evidenceLabel(longest.completionEvidence)}</span>
+            <strong>{formatDuration(longest.durationMs, locale)}</strong>
+            <span>{evidenceLabel(longest.completionEvidence, locale)}</span>
           </div>
           <dl className="longest-run__facts">
             <div>
-              <dt>Start</dt>
+              <dt>{text.start}</dt>
               <dd>
                 <time dateTime={longest.startedAt}>
                   {formatTimestamp(longest.startedAt)}
@@ -196,7 +358,7 @@ export function Results({ result, onDownload, onClear }: ResultsProps) {
               </dd>
             </div>
             <div>
-              <dt>End</dt>
+              <dt>{text.end}</dt>
               <dd>
                 <time dateTime={longest.endedAt}>
                   {formatTimestamp(longest.endedAt)}
@@ -204,71 +366,61 @@ export function Results({ result, onDownload, onClear }: ResultsProps) {
               </dd>
             </div>
             <div>
-              <dt>Model</dt>
-              <dd>{longest.model ?? "Unavailable"}</dd>
+              <dt>{text.model}</dt>
+              <dd>{longest.model ?? unavailableLabel(locale)}</dd>
             </div>
             <div>
-              <dt>Total tokens</dt>
-              <dd>{formatNumber(longest.tokens.total)}</dd>
+              <dt>{text.totalTokens}</dt>
+              <dd>{formatNumber(longest.tokens.total, locale)}</dd>
             </div>
           </dl>
         </article>
       ) : (
         <div className="empty-longest">
-          <strong>No completed, uninterrupted run was found.</strong>
-          <p>Incomplete and interrupted records are never promoted.</p>
+          <strong>{text.noLongest}</strong>
+          <p>{text.noLongestHelp}</p>
         </div>
       )}
 
       {hasWalSnapshot && (
         <aside className="source-warning" role="note">
-          <strong>OpenCode WAL snapshot detected.</strong>
-          <span>
-            Turnspan can read the main database image, but uncheckpointed WAL
-            frames are not present in a single uploaded file. Close OpenCode
-            and copy the database after a checkpoint for the freshest result.
-          </span>
+          <strong>{text.walTitle}</strong>
+          <span>{text.walText}</span>
         </aside>
       )}
 
-      <div className="metric-grid" aria-label="Coverage summary">
+      <div className="metric-grid" aria-label={text.coverage}>
         <div>
-          <span>Sources</span>
-          <strong>{formatNumber(result.totals.sources)}</strong>
+          <span>{text.sources}</span>
+          <strong>{formatNumber(result.totals.sources, locale)}</strong>
         </div>
         <div>
-          <span>Valid runs</span>
-          <strong>{formatNumber(result.totals.runs)}</strong>
+          <span>{text.validRuns}</span>
+          <strong>{formatNumber(result.totals.runs, locale)}</strong>
         </div>
         <div>
-          <span>Completed</span>
-          <strong>{formatNumber(result.totals.completed)}</strong>
+          <span>{text.completed}</span>
+          <strong>{formatNumber(result.totals.completed, locale)}</strong>
         </div>
         <div>
-          <span>Interrupted</span>
-          <strong>{formatNumber(result.totals.interrupted)}</strong>
+          <span>{text.interrupted}</span>
+          <strong>{formatNumber(result.totals.interrupted, locale)}</strong>
         </div>
         <div>
-          <span>Incomplete</span>
-          <strong>{formatNumber(result.totals.incomplete)}</strong>
+          <span>{text.incomplete}</span>
+          <strong>{formatNumber(result.totals.incomplete, locale)}</strong>
         </div>
         <div>
-          <span>Known tokens</span>
-          <strong>{formatNumber(result.totals.tokens)}</strong>
+          <span>{text.knownTokens}</span>
+          <strong>{formatNumber(result.totals.tokens, locale)}</strong>
         </div>
       </div>
 
       <div className="turns-heading">
-        <div>
-          <p className="eyebrow">Analysis / 02</p>
-          <h2>Every valid run</h2>
-        </div>
+        <h2>{text.allRuns}</h2>
         <div className="result-actions">
           <button type="button" className="button button--dark" onClick={onDownload}>
-            Download metadata JSON
-          </button>
-          <button type="button" className="button button--quiet" onClick={onClear}>
-            Clear analysis
+            {text.download}
           </button>
         </div>
       </div>
@@ -278,12 +430,11 @@ export function Results({ result, onDownload, onClear }: ResultsProps) {
           <div className="table-shell">
             <table>
               <caption className="sr-only">
-                Normalized session runs, sortable by provider, status,
-                duration, start time, and tokens.
+                {text.caption}
               </caption>
               <thead>
                 <tr>
-                  <th scope="col">Run</th>
+                  <th scope="col">{text.run}</th>
                   <th
                     scope="col"
                     aria-sort={
@@ -295,11 +446,12 @@ export function Results({ result, onDownload, onClear }: ResultsProps) {
                     }
                   >
                     <SortButton
-                      label="Provider"
+                      label={text.provider}
                       sortKey="provider"
                       activeKey={sortKey}
                       direction={direction}
                       onSort={handleSort}
+                      sortLabel={text.sort}
                     />
                   </th>
                   <th
@@ -313,11 +465,12 @@ export function Results({ result, onDownload, onClear }: ResultsProps) {
                     }
                   >
                     <SortButton
-                      label="Status"
+                      label={text.status}
                       sortKey="status"
                       activeKey={sortKey}
                       direction={direction}
                       onSort={handleSort}
+                      sortLabel={text.sort}
                     />
                   </th>
                   <th
@@ -331,11 +484,12 @@ export function Results({ result, onDownload, onClear }: ResultsProps) {
                     }
                   >
                     <SortButton
-                      label="Duration"
+                      label={text.duration}
                       sortKey="duration"
                       activeKey={sortKey}
                       direction={direction}
                       onSort={handleSort}
+                      sortLabel={text.sort}
                     />
                   </th>
                   <th
@@ -349,15 +503,16 @@ export function Results({ result, onDownload, onClear }: ResultsProps) {
                     }
                   >
                     <SortButton
-                      label="Started"
+                      label={text.started}
                       sortKey="started"
                       activeKey={sortKey}
                       direction={direction}
                       onSort={handleSort}
+                      sortLabel={text.sort}
                     />
                   </th>
-                  <th scope="col">Ended</th>
-                  <th scope="col">Model</th>
+                  <th scope="col">{text.ended}</th>
+                  <th scope="col">{text.model}</th>
                   <th
                     scope="col"
                     aria-sort={
@@ -369,11 +524,12 @@ export function Results({ result, onDownload, onClear }: ResultsProps) {
                     }
                   >
                     <SortButton
-                      label="Tokens"
+                      label={text.tokens}
                       sortKey="tokens"
                       activeKey={sortKey}
                       direction={direction}
                       onSort={handleSort}
+                      sortLabel={text.sort}
                     />
                   </th>
                 </tr>
@@ -382,14 +538,14 @@ export function Results({ result, onDownload, onClear }: ResultsProps) {
                 {visibleRuns.map((run) => (
                   <tr key={run.id}>
                     <td className="mono">{run.id}</td>
-                    <td>{providerLabel(run.provider)}</td>
+                    <td>{providerLabel(run.provider, locale)}</td>
                     <td>
                       <span className={`status status--${run.status}`}>
-                        {statusLabel(run.status)}
+                        {statusLabel(run.status, locale)}
                       </span>
                     </td>
                     <td className="numeric">
-                      {formatDuration(run.durationMs)}
+                      {formatDuration(run.durationMs, locale)}
                     </td>
                     <td>
                       <time dateTime={run.startedAt}>
@@ -402,14 +558,14 @@ export function Results({ result, onDownload, onClear }: ResultsProps) {
                           {formatTimestamp(run.endedAt)}
                         </time>
                       ) : (
-                        "Unavailable"
+                        unavailableLabel(locale)
                       )}
                     </td>
                     <td className="model-cell">
-                      {run.model ?? "Unavailable"}
+                      {run.model ?? unavailableLabel(locale)}
                     </td>
                     <td className="numeric">
-                      {formatNumber(run.tokens.total)}
+                      {formatNumber(run.tokens.total, locale)}
                     </td>
                   </tr>
                 ))}
@@ -417,40 +573,40 @@ export function Results({ result, onDownload, onClear }: ResultsProps) {
             </table>
           </div>
 
-          <div className="mobile-runs" aria-label="Runs">
+          <div className="mobile-runs" aria-label={text.runs}>
             {visibleRuns.map((run) => (
-              <RunMobile key={run.id} run={run} />
+              <RunMobile key={run.id} run={run} locale={locale} />
             ))}
           </div>
 
           {pageCount > 1 && (
-            <nav className="pagination" aria-label="Run table pages">
+            <nav className="pagination" aria-label={text.pages}>
               <button
                 type="button"
                 disabled={page === 1}
                 onClick={() => setPage((current) => current - 1)}
               >
-                Previous
+                {text.previous}
               </button>
               <span>
-                Page {page} / {pageCount}
+                {text.page(page, pageCount)}
               </span>
               <button
                 type="button"
                 disabled={page === pageCount}
                 onClick={() => setPage((current) => current + 1)}
               >
-                Next
+                {text.next}
               </button>
             </nav>
           )}
         </>
       ) : (
-        <p className="no-runs">No valid runs were detected in these sources.</p>
+        <p className="no-runs">{text.noRuns}</p>
       )}
 
       <details className="source-details">
-        <summary>Source coverage and skipped records</summary>
+        <summary>{text.sourceDetails}</summary>
         <div>
           {result.sources.map((source) => {
             const skipped =
@@ -459,10 +615,10 @@ export function Results({ result, onDownload, onClear }: ResultsProps) {
               source.ignoredRecords;
             return (
               <p key={source.sourceOrdinal}>
-                <span>Source {String(source.sourceOrdinal).padStart(2, "0")}</span>
-                <span>{providerLabel(source.provider)}</span>
-                <span>{source.runCount} runs</span>
-                <span>{skipped} skipped records</span>
+                <span>{text.source(source.sourceOrdinal)}</span>
+                <span>{providerLabel(source.provider, locale)}</span>
+                <span>{text.runCount(source.runCount)}</span>
+                <span>{text.skippedCount(skipped)}</span>
               </p>
             );
           })}

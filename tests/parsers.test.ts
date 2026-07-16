@@ -216,6 +216,33 @@ describe("Claude Code JSONL", () => {
     });
   });
 
+  it("excludes system task notifications and their cumulative duration bundle", () => {
+    const parsed = parseClaudeJsonl(
+      textFixture("claude-task-notification.jsonl"),
+    );
+    const result = buildAnalysisResult([parsed]);
+    const serialized = JSON.stringify(result);
+
+    expect(parsed.runs).toHaveLength(2);
+    expect(parsed.runs[0]).toMatchObject({
+      startedAt: "2026-04-05T00:00:00.000Z",
+      endedAt: "2026-04-05T00:00:10.000Z",
+      durationMs: 10_000,
+      status: "completed",
+      completionEvidence: "terminal-stop",
+    });
+    expect(parsed.runs[1]).toMatchObject({
+      durationMs: 703_073,
+      status: "completed",
+      completionEvidence: "explicit-duration",
+    });
+    expect(parsed.runs.some((run) => run.durationMs === 3_605_000)).toBe(
+      false,
+    );
+    expect(result.longestCompletedRunId).toBe("claude-002");
+    expect(serialized).not.toContain(PRIVATE_CANARY);
+  });
+
   it("deduplicates message usage by message ID and scans every tool-result block", () => {
     const parsed = parseClaudeJsonl(
       [

@@ -2,6 +2,7 @@
 /coverage
 /.vinext/
 /.wrangler/
+/.vercel/
 /dist/
 /test-results/
 /playwright-report/

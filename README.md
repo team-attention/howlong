@@ -1,8 +1,11 @@
-# Turnspan
+# Howlong
 
-**Measure the run, not the conversation.**
+**Find your longest completed run.**
 
-Turnspan is a static, browser-only analyzer for Codex, Claude Code, and
+[Live app](https://howlong.ralphthon.org) ·
+[GitHub](https://github.com/team-attention/howlong)
+
+Howlong is a static, browser-only analyzer for Codex, Claude Code, and
 OpenCode session sources. It extracts execution metadata—start, end, duration,
 token counts, model, and completion state—and identifies the longest completed,
 uninterrupted run.
@@ -10,7 +13,7 @@ uninterrupted run.
 Prompts, responses, reasoning text, tool input, and tool output are never shown
 or exported.
 
-![Turnspan desktop results](docs/screenshots/turnspan-desktop.png)
+![Howlong desktop results](docs/screenshots/howlong-desktop.png)
 
 ## Privacy model
 
@@ -58,11 +61,11 @@ The preferred portable input is OpenCode's official sanitized export:
 opencode export <sessionID> --sanitize > opencode-export.json
 ```
 
-Turnspan still applies its own metadata allowlist and never trusts sanitization
+Howlong still applies its own metadata allowlist and never trusts sanitization
 as the privacy boundary.
 
 Current OpenCode uses SQLite WAL mode. A lone `opencode.db` can omit newer
-committed records that still live in `opencode.db-wal`. Turnspan can read a
+committed records that still live in `opencode.db-wal`. Howlong can read a
 checkpointed WAL-header database by normalizing a copy in memory and running
 `PRAGMA integrity_check`, but it cannot reconstruct missing WAL frames.
 
@@ -72,7 +75,7 @@ For the freshest portable source, close OpenCode and make a consistent backup:
 sqlite3 "/path/to/opencode.db" ".backup '/tmp/opencode-snapshot.db'"
 ```
 
-Select `/tmp/opencode-snapshot.db` in Turnspan. Never commit a real session
+Select `/tmp/opencode-snapshot.db` in Howlong. Never commit a real session
 database to this repository. Common transcript/database patterns and the
 `private-sessions/` directory are ignored by Git; only reviewed synthetic
 fixtures are explicitly allowed.
@@ -111,7 +114,8 @@ schema-only inspection of current local installations:
 - Codex stable and forward-compatible event aliases, cumulative tokens, and
   interruption.
 - Claude Code duplicate assistant updates, tool results, `turn_duration`, API
-  errors, interruptions, pending background work, and sidechain-only records.
+  errors, interruptions, pending background work, system task notifications,
+  and sidechain-only records.
 - A checkpointed OpenCode WAL-header database containing both legacy `message`
   and current `session_message` schemas.
 - An official-shape OpenCode export JSON with private data in session, message,
@@ -141,7 +145,11 @@ It verifies:
 - privacy canary exclusion from every output surface;
 - JSON export allowlisting;
 - no horizontal overflow;
-- visible keyboard focus and a stable local-only accessibility label;
+- visible keyboard focus and accessible language controls;
+- complete Korean/English UI switching without network or browser persistence;
+- automatic focus and scrolling to the longest clean run after first analysis;
+- repeat file selection that atomically replaces successful results while
+  preserving the current result when replacement input is invalid;
 - fail-closed behavior for unsupported input.
 
 Screenshots are committed in [docs/screenshots](docs/screenshots).
@@ -156,5 +164,5 @@ fixtures were copied.
 - [Third-party notices](THIRD_PARTY_NOTICES.md)
 - Project license: [MIT](LICENSE)
 
-Turnspan is an independent Team Attention × Ralphthon utility and is not
+Howlong is an independent Team Attention × Ralphthon utility and is not
 affiliated with OpenAI, Anthropic, or OpenCode.

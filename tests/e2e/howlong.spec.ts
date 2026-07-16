@@ -33,6 +33,35 @@ test("analyzes local files offline without exposing raw content", async ({
   expect(navigation!.headers()["x-content-type-options"]).toBe("nosniff");
   const dropzone = page.locator(".dropzone");
   await expect(dropzone).toHaveAttribute("data-ready", "true");
+  await expect(page.locator(".analysis-status")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", {
+      name: "Find your longest completed run.",
+    }),
+  ).toBeVisible();
+  await expect(page.locator(".hero")).toHaveCount(0);
+  await expect(page.getByText("Select files", { exact: true })).toHaveCount(0);
+  await expect(
+    page.getByText("Choose session files", { exact: true }),
+  ).toHaveCount(0);
+  await expect(page.locator(".method")).toHaveCount(0);
+  await expect(
+    page.getByRole("link", { name: "GitHub ↗" }).first(),
+  ).toHaveAttribute("href", "https://github.com/team-attention/howlong");
+  await page.getByRole("button", { name: "KO" }).click();
+  await expect(
+    page.getByRole("heading", {
+      name: "가장 오래 정상 완료된 실행을 찾아보세요.",
+    }),
+  ).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("lang", "ko");
+  await page.getByRole("button", { name: "EN" }).click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  const initialDropzoneBox = await dropzone.boundingBox();
+  expect(initialDropzoneBox).not.toBeNull();
+  expect(initialDropzoneBox!.y + initialDropzoneBox!.height).toBeLessThanOrEqual(
+    testInfo.project.name === "mobile-chromium" ? 844 : 1000,
+  );
   await page.keyboard.press("Tab");
   await page.keyboard.press("Tab");
   await expect(page.locator("#session-files")).toBeFocused();
@@ -41,10 +70,6 @@ test("analyzes local files offline without exposing raw content", async ({
       (element) => getComputedStyle(element).outlineWidth,
     ),
   ).toBe("3px");
-  const localBadgeAria = await page.locator(".local-badge").ariaSnapshot();
-  expect(localBadgeAria).toContain("Local only · zero uploads");
-  expect(localBadgeAria.match(/Local only/g)).toHaveLength(1);
-
   expect(
     allRequests.every(
       (url) => new URL(url).origin === "http://127.0.0.1:4173",
@@ -67,18 +92,27 @@ test("analyzes local files offline without exposing raw content", async ({
   });
   await context.setOffline(true);
 
-  await page.locator("#session-files").setInputFiles(fixtures);
+  const initialChooserPromise = page.waitForEvent("filechooser");
+  await dropzone.click();
+  const initialChooser = await initialChooserPromise;
+  await initialChooser.setFiles(fixtures);
   await expect(page.locator("#results")).toBeVisible();
   await expect(page.locator("#session-files")).toHaveValue("");
-  await expect(dropzone).toHaveAttribute("data-ready", "false");
+  await expect(dropzone).toHaveAttribute("data-ready", "true");
+  await expect(page.locator(".analysis-status")).toHaveCount(0);
+  await expect(page.locator("#results-title")).toBeFocused();
+  await expect
+    .poll(async () => (await page.locator("#results").boundingBox())?.y ?? 9999)
+    .toBeLessThan(80);
   await expect(page.getByTestId("longest-run")).toContainText("3m 0s");
   await expect(page.getByText("OpenCode WAL snapshot detected.")).toBeVisible();
   await expect(page.locator(".metric-grid")).toContainText("12");
-
-  expect(allRequests.slice(bootstrapRequestCount)).toEqual([]);
-  expect(blockedRequests).toEqual([]);
-  expect(websocketUrls).toEqual([]);
-  expect(pageErrors).toEqual([]);
+  await expect(
+    page.getByRole("button", { name: "Choose new files" }),
+  ).toBeEnabled();
+  await expect(
+    page.getByRole("button", { name: "Clear analysis" }),
+  ).toHaveCount(0);
 
   const html = await page.content();
   const aria = await page.locator("body").ariaSnapshot();
@@ -88,8 +122,9 @@ test("analyzes local files offline without exposing raw content", async ({
   expect(consoleMessages.join("\n")).not.toContain(PRIVATE_CANARY);
 
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Download metadata JSON" }).click();
+  await page.getByRole("button", { name: "Download JSON" }).click();
   const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe("howlong-metadata.json");
   const downloadPath = await download.path();
   expect(downloadPath).not.toBeNull();
   const exportText = readFileSync(downloadPath!, "utf8");
@@ -98,7 +133,7 @@ test("analyzes local files offline without exposing raw content", async ({
     product: string;
     runs: Array<Record<string, unknown>>;
   };
-  expect(exported.product).toBe("Turnspan");
+  expect(exported.product).toBe("Howlong");
   expect(exported.runs).toHaveLength(12);
   expect(Object.keys(exported.runs[0]!).sort()).toEqual(
     [
@@ -155,8 +190,8 @@ test("analyzes local files offline without exposing raw content", async ({
 
   const screenshotName =
     testInfo.project.name === "desktop-chromium"
-      ? "turnspan-desktop.png"
-      : "turnspan-mobile.png";
+      ? "howlong-desktop.png"
+      : "howlong-mobile.png";
   await page.screenshot({
     path: path.join(process.cwd(), "docs", "screenshots", screenshotName),
     fullPage: true,
@@ -178,6 +213,26 @@ test("analyzes local files offline without exposing raw content", async ({
     );
     expect(narrowOverflow).toBeLessThanOrEqual(0);
   }
+
+  const replacementChooserPromise = page.waitForEvent("filechooser");
+  await page
+    .getByRole("button", { name: "Choose new files" })
+    .click();
+  const replacementChooser = await replacementChooserPromise;
+  await replacementChooser.setFiles([fixtures[0]!]);
+  await expect(
+    page.locator(".metric-grid > div").filter({ hasText: "Valid runs" }),
+  ).toContainText("2");
+  await expect(
+    page.locator(".metric-grid > div").filter({ hasText: "Sources" }),
+  ).toContainText("1");
+  await expect(page.locator("#session-files")).toHaveValue("");
+  await expect(dropzone).toHaveAttribute("data-ready", "true");
+
+  expect(allRequests.slice(bootstrapRequestCount)).toEqual([]);
+  expect(blockedRequests).toEqual([]);
+  expect(websocketUrls).toEqual([]);
+  expect(pageErrors).toEqual([]);
 });
 
 test("unsupported input fails closed without reflecting source text", async ({
@@ -191,15 +246,70 @@ test("unsupported input fails closed without reflecting source text", async ({
     buffer: Buffer.from(`${PRIVATE_CANARY}\nnot a supported session`),
   });
 
-  await expect(page.locator("#results")).toBeVisible();
-  await expect(page.getByText("No valid runs were detected")).toBeVisible();
+  await expect(page.locator("#results")).toHaveCount(0);
+  await expect(
+    page.getByText("No valid sessions were found in those files."),
+  ).toBeVisible();
   expect(await page.content()).not.toContain(PRIVATE_CANARY);
   expect(await page.content()).not.toContain("private-notes.txt");
+  await expect(page.locator(".dropzone")).toHaveAttribute("data-ready", "true");
+});
 
-  await page.getByRole("button", { name: "Clear analysis" }).click();
-  await expect(page.locator(".dropzone")).toHaveAttribute(
-    "data-ready",
-    "true",
-  );
-  await expect(page.locator("#session-files")).toBeFocused();
+test("invalid replacement preserves the current result", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator(".dropzone")).toHaveAttribute("data-ready", "true");
+  await page.locator("#session-files").setInputFiles([fixtures[0]!]);
+  await expect(page.getByTestId("longest-run")).toContainText("1m 0s");
+
+  const chooserPromise = page.waitForEvent("filechooser");
+  await page
+    .getByRole("button", { name: "Choose new files" })
+    .click();
+  const chooser = await chooserPromise;
+  await chooser.setFiles({
+    name: "replacement-private.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from(`${PRIVATE_CANARY}\nnot a supported session`),
+  });
+
+  await expect(page.getByTestId("longest-run")).toContainText("1m 0s");
+  await expect(
+    page.locator("#results").getByText(
+      "Couldn’t analyze those files. Previous results are unchanged.",
+    ),
+  ).toBeVisible();
+  expect(await page.content()).not.toContain(PRIVATE_CANARY);
+  expect(await page.content()).not.toContain("replacement-private.txt");
+});
+
+test("switches the complete results interface between English and Korean", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator(".dropzone")).toHaveAttribute("data-ready", "true");
+  await page.locator("#session-files").setInputFiles([fixtures[0]!]);
+  await expect(page.getByTestId("longest-run")).toContainText("1m 0s");
+
+  await page.getByRole("button", { name: "KO" }).click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "ko");
+  await expect(
+    page.getByRole("heading", { name: "가장 오래 완료된 실행" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "새 파일 선택" }),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "모든 실행" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "JSON 다운로드" }),
+  ).toBeVisible();
+  await expect(page.getByTestId("longest-run")).toContainText("1분 0초");
+
+  await page.getByRole("button", { name: "EN" }).click();
+  await expect(
+    page.getByRole("heading", {
+      name: "Longest completed run",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(page.getByTestId("longest-run")).toContainText("1m 0s");
 });

@@ -2,7 +2,7 @@ import type { AnalysisResult } from "./types";
 
 export interface MetadataExport {
   schemaVersion: 1;
-  product: "Turnspan";
+  product: "Howlong";
   summary: {
     sources: number;
     runs: number;
@@ -43,7 +43,7 @@ export interface MetadataExport {
 export function createMetadataExport(result: AnalysisResult): MetadataExport {
   return {
     schemaVersion: 1,
-    product: "Turnspan",
+    product: "Howlong",
     summary: {
       sources: result.totals.sources,
       runs: result.totals.runs,

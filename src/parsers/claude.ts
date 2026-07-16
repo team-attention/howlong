@@ -59,6 +59,17 @@ function isHumanUserRecord(record: Record<string, unknown>): boolean {
   );
 }
 
+function isTaskNotificationRecord(
+  record: Record<string, unknown>,
+): boolean {
+  const origin = asRecord(record.origin);
+  return (
+    record.type === "user" &&
+    (record.promptSource === "system" ||
+      origin?.kind === "task-notification")
+  );
+}
+
 function isTerminalStop(reason: string | undefined): boolean {
   return reason === "end_turn" || reason === "stop_sequence";
 }
@@ -107,6 +118,7 @@ function finalize(builder: ClaudeRunBuilder) {
 export function parseClaudeJsonl(text: string): ParsedSource {
   const runs: ReturnType<typeof finalize>[] = [];
   let active: ClaudeRunBuilder | undefined;
+  let suppressTaskNotificationTurn = false;
   let malformedRecords = 0;
   let oversizedRecords = 0;
   let ignoredRecords = 0;
@@ -172,12 +184,20 @@ export function parseClaudeJsonl(text: string): ParsedSource {
       continue;
     }
 
+    if (isTaskNotificationRecord(record)) {
+      closeActiveForBoundary(toIsoTimestamp(record.timestamp));
+      suppressTaskNotificationTurn = true;
+      ignoredRecords += 1;
+      continue;
+    }
+
     if (isHumanUserRecord(record)) {
       const startedAt = toIsoTimestamp(record.timestamp);
       if (!startedAt) {
         malformedRecords += 1;
         continue;
       }
+      suppressTaskNotificationTurn = false;
       closeActiveForBoundary(startedAt);
       active = {
         startedAt,
@@ -187,6 +207,11 @@ export function parseClaudeJsonl(text: string): ParsedSource {
         usageByMessage: new Map(),
         warningCodes: [],
       };
+      continue;
+    }
+
+    if (suppressTaskNotificationTurn) {
+      ignoredRecords += 1;
       continue;
     }
 

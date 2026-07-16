@@ -1,6 +1,6 @@
 # Third-party notices
 
-Turnspan's own source is MIT-licensed. The production bundle contains the
+Howlong's own source is MIT-licensed. The production bundle contains the
 following third-party runtime components.
 
 ## React and React DOM
@@ -48,4 +48,4 @@ TypeScript (Apache-2.0) for building and verification. They are not application
 runtime services and do not receive session data.
 
 The projects discussed in `docs/research.md` were research references only.
-Their code and fixtures were not copied into Turnspan.
+Their code and fixtures were not copied into Howlong.

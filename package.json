@@ -1,5 +1,5 @@
 {
-  "name": "turnspan",
+  "name": "howlong",
   "version": "0.1.0",
   "description": "Private browser-only runtime analysis for Codex, Claude Code, and OpenCode sessions.",
   "private": true,

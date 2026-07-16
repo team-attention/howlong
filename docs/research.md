@@ -4,7 +4,7 @@ Research date: **2026-07-16 KST**
 
 The investigation prioritized current official repositories, shipped provider
 artifacts, and real schema-only observations. Secondary OSS tools were used to
-cross-check edge cases and ergonomics. Turnspan was then implemented clean-room
+cross-check edge cases and ergonomics. Howlong was then implemented clean-room
 in TypeScript.
 
 ## Provider primary sources
@@ -34,7 +34,7 @@ Validated behavior:
 
 Known limitation: stable 0.144.5 completion records do not persist every
 unexpected terminal error. A null or absent error therefore cannot prove that
-all historical stable turns were semantically successful; Turnspan reports the
+all historical stable turns were semantically successful; Howlong reports the
 strongest evidence available in the file.
 
 ### Claude Code
@@ -115,7 +115,7 @@ support is pinned best-effort compatibility with OpenCode 1.18.2 internal
 tables; those tables may change independently of the export command.
 
 OpenCode sets SQLite file header bytes 18 and 19 to WAL mode (`2/2`).
-`sqlite3_deserialize()` cannot directly query that file image. Turnspan clones
+`sqlite3_deserialize()` cannot directly query that file image. Howlong clones
 the uploaded bytes, changes only the clone's header to rollback mode (`1/1`),
 copies it into SQLite-owned memory with 64 zero padding bytes, deserializes
 read-only with `SQLITE_DESERIALIZE_FREEONCLOSE`, and requires
@@ -138,7 +138,7 @@ WAL-header inputs.
 
 The internal Deep Thought `session-insights` workflow was also deliberately not
 reused: it extracts prompt topics, tools, and files, which conflicts with
-Turnspan's metadata-only boundary, and it has no standalone reusable license.
+Howlong's metadata-only boundary, and it has no standalone reusable license.
 
 ## Browser and privacy sources
 
@@ -171,8 +171,9 @@ Implementation consequences:
 Names were checked across GitHub, npm, PyPI, general web results, and public
 trademark search.
 
-- **Turnspan** was selected: it directly describes elapsed turn time and had no
-  clear collision with a user-facing software product on the research date.
+- **Howlong** was selected for immediate comprehension and the requested
+  `howlong.ralphthon.org` product direction. Repository and domain availability
+  were verified before publication.
 - `Turnproof` was rejected because of a 2026 software trademark filing.
 - `Runspan` was rejected because of an existing running application.
 - `TurnSift` / `Session Sift` were rejected because the “sift” namespace is
@@ -192,11 +193,11 @@ Deep Thought source of truth:
 
 ## License decision
 
-- Turnspan source: MIT.
+- Howlong source: MIT.
 - Runtime SQLite wrapper: Apache-2.0.
 - SQLite engine: public domain.
 - Runtime React packages: MIT.
-- Synthetic fixtures were written for Turnspan and do not copy upstream fixture
+- Synthetic fixtures were written for Howlong and do not copy upstream fixture
   text.
 - Provider names are used only to describe compatible import formats.
-- Turnspan is explicitly unaffiliated with OpenAI, Anthropic, and OpenCode.
+- Howlong is explicitly unaffiliated with OpenAI, Anthropic, and OpenCode.
