@@ -1,6 +1,6 @@
 # Howlong
 
-**Find your longest completed run.**
+**How long did it really run?**
 
 [Live app](https://howlong.ralphthon.org) ·
 [GitHub](https://github.com/team-attention/howlong)
@@ -145,8 +145,7 @@ It verifies:
 - privacy canary exclusion from every output surface;
 - JSON export allowlisting;
 - no horizontal overflow;
-- visible keyboard focus and accessible language controls;
-- complete Korean/English UI switching without network or browser persistence;
+- visible keyboard focus and accessible file input controls;
 - automatic focus and scrolling to the longest clean run after first analysis;
 - repeat file selection that atomically replaces successful results while
   preserving the current result when replacement input is invalid;
