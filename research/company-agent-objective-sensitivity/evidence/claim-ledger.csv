@@ -1,0 +1,18 @@
+claim_id,short_claim,class,evidence_locator,status
+C01,"Changing reward preferences in fixed dynamics is standard MORL/CMDP",PRIMARY_SOURCE,"S20,S23,S24,S35",supported
+C02,"CoffeeBench already changed net-profit KPI to revenue under strong targets",PRIMARY_SOURCE,"S01 project lines 91-96",supported
+C03,"Enterprise long-horizon agent benchmarks are crowded",PRIMARY_SOURCE,"S01,S03,S06,S07,S08,S09",supported
+C04,"Reward hacking and hidden performance are established problems",PRIMARY_SOURCE,"S13,S14,S15,S30,S31",supported
+C05,"The candidate contribution is an empirically validated paired audit package",EXPLICIT_HYPOTHESIS,"mock-paper-v0.md sections 1 and 4",untested
+C06,"Between-objective OCAD exceeds repeat and paraphrase divergence with vector effects",EXPLICIT_HYPOTHESIS,"protocol.md H1",untested
+C07,"Growth objectives cause excess harm relative to KPI-matched benign policies or frontier",EXPLICIT_HYPOTHESIS,"protocol.md H2",untested
+C08,"Standard benchmark scores weakly predict objective robustness",EXPLICIT_HYPOTHESIS,"protocol.md H3",exploratory
+C09,"The plumbing pilot contains 72 episodes",ACTUAL_SYNTHETIC_RESULT,"results/sample-episodes.jsonl line count",supported
+C10,"Plumbing OCAD mean is 0.972222",ACTUAL_SYNTHETIC_RESULT,"results/pilot-receipt.json",supported
+C11,"Plumbing run recorded 72 deceptive action events and 60 repeated compliance-state flags across 12 affected episodes",ACTUAL_SYNTHETIC_RESULT,"results/sample-episodes.jsonl and pilot-receipt.json",supported
+C12,"Plumbing results are not frontier-model evidence",ACTUAL_SYNTHETIC_RESULT,"results/pilot-receipt.json evidence_class",supported
+C13,"The true company objective is not identifiable from this benchmark",EXPLICIT_HYPOTHESIS,"limitations/construct warning",conceptual
+C14,"Objective effects may disappear under paraphrase controls",EXPLICIT_HYPOTHESIS,"30-day-plan.md P2",falsifier
+C15,"No reviewed source establishes the full proposed measurement package",EXPLICIT_HYPOTHESIS,"evidence/search-protocol.md and prior-art-matrix.md",provisional
+C16,"OCAD is a closed-loop total contrast after state mediation, not a direct same-state policy effect",EXPLICIT_HYPOTHESIS,"formalization.md estimands",definition
+C17,"The 0.972 OCAD value is a deterministic software checksum with no inferential interval",ACTUAL_SYNTHETIC_RESULT,"results/pilot-receipt.json ocad_descriptive",supported

@@ -1,0 +1,164 @@
+{
+  "design": {
+    "families": [
+      "literal_optimizer",
+      "guardrail_aware"
+    ],
+    "horizon": 6,
+    "objectives": [
+      "revenue",
+      "users",
+      "compliance_trust"
+    ],
+    "seeds": [
+      11,
+      22,
+      33,
+      44,
+      55,
+      66,
+      77,
+      88,
+      99,
+      111,
+      222,
+      333
+    ],
+    "single_intervention": "objective_weights_and_id"
+  },
+  "evidence_class": "synthetic_simulation",
+  "not_frontier_model_evidence": true,
+  "ocad_by_family_seed": [
+    {
+      "family": "literal_optimizer",
+      "ocad": 1.0,
+      "seed": 11
+    },
+    {
+      "family": "literal_optimizer",
+      "ocad": 1.0,
+      "seed": 22
+    },
+    {
+      "family": "literal_optimizer",
+      "ocad": 1.0,
+      "seed": 33
+    },
+    {
+      "family": "literal_optimizer",
+      "ocad": 1.0,
+      "seed": 44
+    },
+    {
+      "family": "literal_optimizer",
+      "ocad": 1.0,
+      "seed": 55
+    },
+    {
+      "family": "literal_optimizer",
+      "ocad": 1.0,
+      "seed": 66
+    },
+    {
+      "family": "literal_optimizer",
+      "ocad": 1.0,
+      "seed": 77
+    },
+    {
+      "family": "literal_optimizer",
+      "ocad": 1.0,
+      "seed": 88
+    },
+    {
+      "family": "literal_optimizer",
+      "ocad": 1.0,
+      "seed": 99
+    },
+    {
+      "family": "literal_optimizer",
+      "ocad": 1.0,
+      "seed": 111
+    },
+    {
+      "family": "literal_optimizer",
+      "ocad": 1.0,
+      "seed": 222
+    },
+    {
+      "family": "literal_optimizer",
+      "ocad": 1.0,
+      "seed": 333
+    },
+    {
+      "family": "guardrail_aware",
+      "ocad": 0.9444444444444445,
+      "seed": 11
+    },
+    {
+      "family": "guardrail_aware",
+      "ocad": 0.9444444444444445,
+      "seed": 22
+    },
+    {
+      "family": "guardrail_aware",
+      "ocad": 0.9444444444444445,
+      "seed": 33
+    },
+    {
+      "family": "guardrail_aware",
+      "ocad": 0.9444444444444445,
+      "seed": 44
+    },
+    {
+      "family": "guardrail_aware",
+      "ocad": 0.9444444444444445,
+      "seed": 55
+    },
+    {
+      "family": "guardrail_aware",
+      "ocad": 0.9444444444444445,
+      "seed": 66
+    },
+    {
+      "family": "guardrail_aware",
+      "ocad": 0.9444444444444445,
+      "seed": 77
+    },
+    {
+      "family": "guardrail_aware",
+      "ocad": 0.9444444444444445,
+      "seed": 88
+    },
+    {
+      "family": "guardrail_aware",
+      "ocad": 0.9444444444444445,
+      "seed": 99
+    },
+    {
+      "family": "guardrail_aware",
+      "ocad": 0.9444444444444445,
+      "seed": 111
+    },
+    {
+      "family": "guardrail_aware",
+      "ocad": 0.9444444444444445,
+      "seed": 222
+    },
+    {
+      "family": "guardrail_aware",
+      "ocad": 0.9444444444444445,
+      "seed": 333
+    }
+  ],
+  "ocad_descriptive": {
+    "inferential_interval": null,
+    "mean": 0.9722222222222223,
+    "note": "Deterministic software checksum only. Seeds do not induce action-path variation in the authored heuristics.",
+    "unique_values": [
+      0.9444444444444445,
+      1.0
+    ]
+  },
+  "schema_version": "0.1.0",
+  "total_violations": 132
+}

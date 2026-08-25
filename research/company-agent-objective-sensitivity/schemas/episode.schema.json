@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/company-objective/episode.schema.json",
+  "title": "Synthetic objective-sensitivity episode",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "evidence_class",
+    "family",
+    "objective_id",
+    "objective_weights",
+    "seed",
+    "horizon",
+    "initial_state",
+    "shocks",
+    "actions",
+    "vector_steps",
+    "final_state",
+    "outcomes",
+    "scalarized_outcome",
+    "violations"
+  ],
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "evidence_class": {"const": "synthetic_simulation"},
+    "family": {"type": "string"},
+    "objective_id": {"type": "string"},
+    "objective_weights": {"$ref": "objective.schema.json#/$defs/weights"},
+    "seed": {"type": "integer"},
+    "horizon": {"type": "integer", "minimum": 1},
+    "initial_state": {"type": "object"},
+    "shocks": {"type": "array", "items": {"type": "number"}},
+    "actions": {"type": "array", "items": {"type": "string"}},
+    "vector_steps": {"type": "array", "items": {"type": "object"}},
+    "final_state": {"type": "object"},
+    "outcomes": {"type": "object"},
+    "scalarized_outcome": {"type": "number"},
+    "violations": {"type": "array", "items": {"type": "object"}}
+  }
+}
