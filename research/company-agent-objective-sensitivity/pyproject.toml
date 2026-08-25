@@ -1,0 +1,20 @@
+[project]
+name = "company-objective-bench"
+version = "0.1.0"
+description = "Synthetic pilot for company-agent objective sensitivity"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+company-objective-pilot = "company_objective_bench.runner:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = ["pytest>=8.0"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

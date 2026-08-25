@@ -1,0 +1,39 @@
+id,title,primary_url,artifact_status,license_or_reuse_status,use_in_project
+S01,CoffeeBench,https://arxiv.org/abs/2606.16613,Paper+project+code+trajectories,"Verify repo/data license before copying",Citation and planned clean replication only
+S02,Agentic Misalignment,https://www.anthropic.com/research/agentic-misalignment,Paper+methods+code link,"Verify linked artifact license",Citation only
+S03,EnterpriseArena,https://arxiv.org/abs/2603.23638,Paper,"Paper access; artifact terms not relied on",Citation only
+S04,MACHIAVELLI,https://arxiv.org/abs/2304.03279,Paper+repo,"Verify repo/data licenses before reuse",Citation only
+S05,ManagerBench,https://arxiv.org/abs/2510.00857,Paper+repo,"Verify dependencies/content",Citation only
+S06,YC-Bench,https://arxiv.org/abs/2604.01212,Paper+repo,"Verify repo license",Citation only
+S07,Vending-Bench,https://arxiv.org/abs/2502.15840,Paper,"Verify artifact terms",Citation only
+S08,TheAgentCompany,https://github.com/TheAgentCompany/TheAgentCompany,Code+tasks,"MIT code; dependency/content terms separate",Design reference only
+S09,EnterpriseGym Corecraft,https://arxiv.org/abs/2602.16179,Paper,"Verify artifact terms",Citation only
+S10,CRMArena-Pro,https://arxiv.org/abs/2505.18878,Paper+data,"CC BY-NC 4.0 reported; noncommercial restriction",Citation only
+S11,tau-bench,https://arxiv.org/abs/2406.12045,Paper+repo,"Verify current repo/data terms",Citation only
+S12,WorkArena++,https://github.com/ServiceNow/WorkArena,Code+tasks,"Apache-2.0 code; instance terms separate",Citation only
+S13,AI Safety Gridworlds,https://arxiv.org/abs/1711.09883,Paper+code,"Verify code license",Citation only
+S14,Reward Hacking Benchmark,https://arxiv.org/abs/2605.02964,Paper,"Verify artifact terms",Citation only
+S15,Specification Gaming in Reasoning Models,https://arxiv.org/abs/2605.02269,Paper+suite,"Verify suite license",Citation only
+S16,ATBench,https://arxiv.org/abs/2604.02022,Paper+data,"Verify trajectory terms",Citation only
+S17,AgentMisalignment,https://arxiv.org/abs/2506.04018,Paper,"Verify artifact terms",Citation only
+S18,SysAdmin,https://arxiv.org/abs/2607.18239,Paper,"Verify artifact terms",Citation only
+S19,Power-seeking can be probable and predictive,https://arxiv.org/abs/2304.06528,Paper,"Paper access",Citation only
+S20,MO-Gymnasium and MORL-Baselines,https://papers.nips.cc/paper_files/paper/2023/hash/4aa8891583f07ae200ba07843954caeb-Abstract-Datasets_and_Benchmarks.html,Paper+repos,"Verify per-repo licenses",Citation only
+S21,MOMAland,https://arxiv.org/abs/2407.16312,Paper+repo,"Verify repo license",Citation only
+S22,MORL generalization,https://arxiv.org/abs/2503.00799,Paper+repo,"Verify repo license",Citation only
+S23,CMDP representative,https://proceedings.mlr.press/v258/ni25a.html,Paper,"PMLR paper access",Citation only
+S24,Preference Controllable RL,https://proceedings.mlr.press/v267/yang25ax.html,Paper,"PMLR paper access",Citation only
+S25,Distributional Pareto MORL,https://proceedings.neurips.cc/paper_files/paper/2023/hash/32285dd184dbfc33cb2d1f0db53c23c5-Abstract-Conference.html,Paper,"NeurIPS paper access",Citation only
+S26,Rewards-in-Context,https://proceedings.mlr.press/v235/yang24q.html,Paper,"PMLR paper access",Citation only
+S27,Inverse Reward Design,https://arxiv.org/abs/1711.02827,Paper,"Paper access",Citation only
+S28,Cooperative IRL,https://arxiv.org/abs/1606.03137,Paper,"Paper access",Citation only
+S29,Goal Misgeneralization,https://arxiv.org/abs/2105.14111,Paper,"Paper access",Citation only
+S30,Concrete Problems in AI Safety,https://arxiv.org/abs/1606.06565,Paper,"Paper access",Citation only
+S31,Defining and Characterizing Reward Hacking,https://proceedings.neurips.cc/paper_files/paper/2022/file/3d719fee332caa23d5038b8a90e81796-Paper-Conference.pdf,Paper,"NeurIPS paper access",Citation only
+S32,MAC-Bench,https://arxiv.org/abs/2606.07805,Paper,"Verify artifact terms",Citation only
+S33,CUARewardBench,https://openreview.net/forum?id=Xj7V0wKlE5,Paper,"OpenReview CC BY 4.0 page; verify artifacts",Citation only
+S34,GraphAllocBench,https://arxiv.org/abs/2601.20753,Paper,"Verify artifact terms",Citation only
+S35,A Generalized MORL Algorithm,https://proceedings.neurips.cc/paper/2019/hash/4a46fbfca3f1465a27b210f4bdfe6ab3-Abstract.html,Paper,"NeurIPS paper access",Citation only
+LOCAL01,Ralphthon ICML auto-research,https://github.com/team-attention/ralphthon-icml,Code+templates,"MIT; preserve notice",Workflow ideas only; no copied code
+LOCAL02,Deep Thought command center,local-internal,Internal documents,"No public reuse license; internal-only",Private design context only
+LOCAL03,Environment Foundry,local-internal,Internal code+schemas,"No top-level license found",Read-only design reference; no redistribution

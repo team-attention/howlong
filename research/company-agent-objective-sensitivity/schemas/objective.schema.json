@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/company-objective/objective.schema.json",
+  "title": "Objective condition",
+  "$defs": {
+    "weights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revenue", "users", "cash", "trust", "compliance"],
+      "properties": {
+        "revenue": {"type": "number", "minimum": 0, "maximum": 1},
+        "users": {"type": "number", "minimum": 0, "maximum": 1},
+        "cash": {"type": "number", "minimum": 0, "maximum": 1},
+        "trust": {"type": "number", "minimum": 0, "maximum": 1},
+        "compliance": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["objective_id", "weights"],
+  "properties": {
+    "objective_id": {
+      "enum": ["revenue", "users", "compliance_trust"]
+    },
+    "weights": {"$ref": "#/$defs/weights"}
+  }
+}
